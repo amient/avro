@@ -8,7 +8,6 @@ import (
 )
 
 func NewDatumProjector(readerSchema, writerSchema Schema) *DatumProjector {
-	//TODO check cache for the same combination of schemas
 	return &DatumProjector{
 		projection: newProjection(readerSchema, writerSchema),
 	}
