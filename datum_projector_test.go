@@ -358,4 +358,8 @@ func TestProjections(t *testing.T) {
 		panic("specific projection failed")
 	}
 
+	//TODO consider enums
+	//TODO consider prefixes and FIXED avro type
+
+
 }
