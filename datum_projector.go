@@ -107,7 +107,7 @@ func newProjection(readerSchema, writerSchema Schema) *Projection {
 		switch writerSchema.Type() {
 		case Long:
 			result.Unwrap = func(dec Decoder) (interface{}, error) {
-				return dec.ReadInt()
+				return dec.ReadLong()
 			}
 		case Int:
 			result.Unwrap = func(dec Decoder) (interface{}, error) {
@@ -402,7 +402,7 @@ func newProjection(readerSchema, writerSchema Schema) *Projection {
 			for _, readerField := range readerRecordSchema.Fields {
 				if _, ok := defaultIndexMap[readerField.Name]; !ok {
 					//TODO converting default values to native types should be probably a method of Schema type
-					defaultUnwrapperMap[readerField.Name] = readerField.Default
+
 					var defaultValue reflect.Value
 					switch readerField.Type.Type() {
 					case Array:
@@ -428,6 +428,7 @@ func newProjection(readerSchema, writerSchema Schema) *Projection {
 						defaultValue = reflect.ValueOf(readerField.Default)
 					}
 					defaultIndexMap[readerField.Name] = defaultValue
+					defaultUnwrapperMap[readerField.Name] = defaultValue.Interface()
 				} else {
 					delete(defaultIndexMap, readerField.Name)
 				}
