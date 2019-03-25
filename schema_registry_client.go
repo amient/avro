@@ -34,6 +34,9 @@ func (c *SchemaRegistryClient) Get(schemaId uint32) Schema {
 			panic(err)
 		}
 		defer resp.Body.Close()
+		if resp.StatusCode != 200 {
+			panic(fmt.Errorf("unexpected response from the schema registry: %v", resp.StatusCode))
+		}
 		if body, err := ioutil.ReadAll(resp.Body); err != nil {
 			panic(err)
 		} else {
