@@ -553,7 +553,7 @@ func (s *RecordSchema) String() string {
 
 type FieldPair struct {
 	Index int
-	Name string
+	Name  string
 }
 
 type FieldPairs []FieldPair
@@ -564,7 +564,7 @@ func (p FieldPairs) Len() int {
 func (p FieldPairs) Less(a, b int) bool {
 	return p[a].Name < p[b].Name
 }
-func (p FieldPairs) Swap(i,j int){
+func (p FieldPairs) Swap(i, j int) {
 	p[i], p[j] = p[j], p[i]
 }
 
@@ -1085,7 +1085,7 @@ func (s *UnionSchema) Validate(v reflect.Value) bool {
 
 type UnionPair struct {
 	Index int
-	Type Schema
+	Type  Schema
 }
 
 type UnionPairs []UnionPair
@@ -1096,7 +1096,7 @@ func (p UnionPairs) Len() int {
 func (p UnionPairs) Less(a, b int) bool {
 	return p[a].Type.GetName() < p[b].Type.GetName()
 }
-func (p UnionPairs) Swap(i,j int){
+func (p UnionPairs) Swap(i, j int) {
 	p[i], p[j] = p[j], p[i]
 }
 
@@ -1127,10 +1127,10 @@ func (s *UnionSchema) MarshalJSON() ([]byte, error) {
 
 // FixedSchema implements Schema and represents Avro fixed type.
 type FixedSchema struct {
-	Namespace   string
-	Name        string
-	Size        int
-	Properties  map[string]interface{}
+	Namespace   string                 `json:"namespace"`
+	Name        string                 `json:"name"`
+	Size        int                    `json:"size"`
+	Properties  map[string]interface{} `json:"properties,omitempty"`
 	fingerprint *Fingerprint
 }
 
@@ -1538,7 +1538,7 @@ func (c *CanonicalSchema) MarshalJSON() ([]byte, error) {
 	case "union":
 		return json.Marshal(c.Types)
 	default:
-		return json.Marshal(struct{
+		return json.Marshal(struct {
 			Name    string                  `json:"name,omitempty"`
 			Type    string                  `json:"type,omitempty"`
 			Fields  []*CanonicalSchemaField `json:"fields,omitempty"`
