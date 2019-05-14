@@ -1195,13 +1195,17 @@ func (s *FixedSchema) Canonical() (*CanonicalSchema, error) {
 // MarshalJSON serializes the given schema as JSON.
 func (s *FixedSchema) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
-		Type string `json:"type,omitempty"`
-		Size int    `json:"size,omitempty"`
-		Name string `json:"name,omitempty"`
+		Type       string                 `json:"type,omitempty"`
+		Size       int                    `json:"size,omitempty"`
+		Name       string                 `json:"name,omitempty"`
+		Namespace  string                 `json:"namespace"`
+		Properties map[string]interface{} `json:"properties,omitempty"`
 	}{
-		Type: "fixed",
-		Size: s.Size,
-		Name: s.Name,
+		Type:       "fixed",
+		Size:       s.Size,
+		Name:       s.Name,
+		Namespace:  s.Namespace,
+		Properties: s.Properties,
 	})
 }
 
