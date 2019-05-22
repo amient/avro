@@ -17,6 +17,7 @@ package avro
 
 import (
 	"encoding/json"
+	"fmt"
 )
 
 // AvroRecord is an interface for anything that has an Avro schema and can be serialized/deserialized by this library.
@@ -65,8 +66,57 @@ func (gr *GenericRecord) String() string {
 	return string(buf)
 }
 
-func (gr *GenericRecord) SetAll(fields map[string]interface{}) {
-	gr.fields = fields
+func (gr *GenericRecord) SetAll(data interface{}) {
+	stringKey := func(k interface{}) string {
+		if f, ok := k.(string); ok {
+			return f
+		} else if f, ok := k.(fmt.Stringer); ok {
+			return f.String()
+		} else {
+			return ""
+		}
+	}
+	var convertValue func(v interface{}, schema Schema) interface{}
+	convertValue = func(data interface{}, schema Schema) (result interface{}) {
+		if recordSchema, ok := schema.(*RecordSchema); ok {
+			dict := make(map[string]interface{})
+			for k, v := range data.(map[interface{}]interface{}) {
+				field := stringKey(k)
+				if field != "" {
+					for _, s := range recordSchema.Fields {
+						if s.Name == field {
+							dict[field] = convertValue(v, s.Type)
+						}
+					}
+				}
+			}
+			result = GenericRecord{
+				schema: recordSchema,
+				fields: dict,
+			}
+		} else if mapSchema, ok := schema.(*MapSchema); ok {
+			dict := make(map[string]interface{})
+			for k, v := range data.(map[interface{}]interface{}) {
+				field := stringKey(k)
+				if field != "" {
+					dict[field] = convertValue(v, mapSchema.Values)
+				}
+			}
+			result = dict
+
+		} else if a, ok := data.([]interface{}); ok {
+			slice := make([]interface{}, len(a))
+			for i, v := range a {
+				slice[i] = convertValue(v, schema.(*ArraySchema).Items)
+			}
+			result = slice
+		} else {
+			result = data
+		}
+		return
+	}
+	gr.fields = convertValue(data, gr.schema).(GenericRecord).fields
+
 }
 
 // Map returns a map representation of this GenericRecord.
