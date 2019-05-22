@@ -475,6 +475,52 @@ func TestCanonicalConstituentOrdering(t *testing.T) {
 	assert(t, f19, f20)
 
 }
+
+func TestSchemaConvertGeneric(t *testing.T) {
+	schema := MustParseSchema(`{
+	    "type": "record",
+	    "name": "Rec",
+	    "fields": [
+	        {
+	            "name": "dict",
+	            "type": {
+					"type": "map", 
+					"values": { "type": "array", "items": "string" }
+				}
+	        }, {
+				"name": "select",
+				"type": { "type": "enum", "name": "something", "symbols": [ "A", "B", "C"] },
+				"default": "B"
+			}, {
+				"name": "option",
+				"type": [ "null", { "type": "enum", "name": "something", "symbols": [ "A", "B", "C"] }],
+				"default": null
+			}, {
+				"name": "option2",
+				"type": [ "null", { "type": "map", "values": "long" }],
+				"default": null
+			}
+	    ]
+	}`)
+
+
+	datum := map[string]interface{} {
+		"dict": map[interface{}]interface{} {
+			"A1": []interface{} { "abc", "def" },
+			"G1": []interface{} { "ghi", "jkl" },
+		},
+		"option": "C",
+	}
+	if generic, err := schema.Generic(datum); err != nil {
+		panic(err)
+	} else if rec, ok := generic.(*GenericRecord); !ok {
+		panic("not a record")
+	} else {
+		assert(t, rec.String(), `{"dict":{"A1":["abc","def"],"G1":["ghi","jkl"]},"option":"C","option2":null,"select":"B"}`)
+	}
+
+}
+
 func arrayEqual(arr1 []string, arr2 []string) bool {
 	if len(arr1) != len(arr2) {
 		return false

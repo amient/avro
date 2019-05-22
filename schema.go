@@ -8,6 +8,7 @@ import (
 	"math"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -112,6 +113,9 @@ type Schema interface {
 	// Converts this schema to its JSON representation.
 	String() string
 
+	// Converts go runtime datum into a value acceptable by this schema
+	Generic(datum interface{}) (interface{}, error)
+
 	// Checks whether the given value is writeable to this schema.
 	Validate(v reflect.Value) bool
 
@@ -136,6 +140,17 @@ func (*StringSchema) Fingerprint() (*Fingerprint, error) {
 // Returns a JSON representation of StringSchema.
 func (*StringSchema) String() string {
 	return `{"type": "string"}`
+}
+
+// Converts go runtime datum into a value acceptable by this schema
+func (*StringSchema) Generic(datum interface{}) (interface{}, error) {
+	if value, ok := datum.(string); ok {
+		return value, nil
+	} else if value, ok := datum.(fmt.Stringer); ok {
+		return value.String(), nil
+	} else {
+		return nil, fmt.Errorf("don't know how to convert datum to a string value: %v", datum)
+	}
 }
 
 // Type returns a type constant for this StringSchema.
@@ -183,6 +198,19 @@ func (*BytesSchema) Fingerprint() (*Fingerprint, error) {
 // String returns a JSON representation of BytesSchema.
 func (*BytesSchema) String() string {
 	return `{"type": "bytes"}`
+}
+
+// Converts go runtime datum into a value acceptable by this schema
+func (s *BytesSchema) Generic(datum interface{}) (interface{}, error) {
+	if value, ok := datum.([]byte); ok {
+		return value, nil
+	} else if value, ok := datum.(string); ok {
+		return []byte(value), nil
+	} else if value, ok := datum.(fmt.Stringer); ok {
+		return s.Generic(value.String())
+	} else {
+		return nil, fmt.Errorf("don't know how to convert datum to a bytes value: %v", datum)
+	}
 }
 
 // Type returns a type constant for this BytesSchema.
@@ -233,6 +261,35 @@ func (*IntSchema) String() string {
 	return `{"type": "int"}`
 }
 
+// Converts go runtime datum into a value acceptable by this schema
+func (s *IntSchema) Generic(datum interface{}) (interface{}, error) {
+	if value, ok := datum.(int32); ok {
+		return int32(value), nil
+	} else if value, ok := datum.(int); ok {
+		return int32(value), nil
+	} else if value, ok := datum.(int16); ok {
+		return int32(value), nil
+	} else if value, ok := datum.(int8); ok {
+		return int32(value), nil
+	} else if value, ok := datum.(uint32); ok {
+		return int32(value), nil
+	} else if value, ok := datum.(uint16); ok {
+		return int32(value), nil
+	} else if value, ok := datum.(uint8); ok {
+		return int32(value), nil
+	} else if value, ok := datum.(string); ok {
+		if i, err := strconv.Atoi(value); err != nil {
+			return nil, err
+		} else {
+			return int32(i), nil
+		}
+	} else if value, ok := datum.(fmt.Stringer); ok {
+		return s.Generic(value.String())
+	} else {
+		return nil, fmt.Errorf("don't know how to convert datum to an int value: %v", datum)
+	}
+}
+
 // Type returns a type constant for this IntSchema.
 func (*IntSchema) Type() int {
 	return Int
@@ -277,6 +334,39 @@ func (*LongSchema) Fingerprint() (*Fingerprint, error) {
 // Returns a JSON representation of LongSchema.
 func (*LongSchema) String() string {
 	return `{"type": "long"}`
+}
+
+// Converts go runtime datum into a value acceptable by this schema
+func (s *LongSchema) Generic(datum interface{}) (interface{}, error) {
+	if value, ok := datum.(int64); ok {
+		return int64(value), nil
+	} else if value, ok := datum.(int); ok {
+		return int64(value), nil
+	} else if value, ok := datum.(int32); ok {
+		return int64(value), nil
+	} else if value, ok := datum.(int16); ok {
+		return int64(value), nil
+	} else if value, ok := datum.(int8); ok {
+		return int64(value), nil
+	} else if value, ok := datum.(uint64); ok {
+		return int64(value), nil
+	} else if value, ok := datum.(uint32); ok {
+		return int64(value), nil
+	} else if value, ok := datum.(uint16); ok {
+		return int64(value), nil
+	} else if value, ok := datum.(uint8); ok {
+		return int64(value), nil
+	} else if value, ok := datum.(string); ok {
+		if i, err := strconv.Atoi(value); err != nil {
+			return nil, err
+		} else {
+			return int64(i), nil
+		}
+	} else if value, ok := datum.(fmt.Stringer); ok {
+		return s.Generic(value.String())
+	} else {
+		return nil, fmt.Errorf("don't know how to convert datum to a long value: %v from type %v", datum, reflect.TypeOf(datum))
+	}
 }
 
 // Type returns a type constant for this LongSchema.
@@ -325,6 +415,33 @@ func (*FloatSchema) String() string {
 	return `{"type": "float"}`
 }
 
+// Converts go runtime datum into a value acceptable by this schema
+func (s *FloatSchema) Generic(datum interface{}) (interface{}, error) {
+	if value, ok := datum.(float32); ok {
+		return float32(value), nil
+	} else if value, ok := datum.(int); ok {
+		return float32(value), nil
+	} else if value, ok := datum.(int32); ok {
+		return float32(value), nil
+	} else if value, ok := datum.(int16); ok {
+		return float32(value), nil
+	} else if value, ok := datum.(int8); ok {
+		return float32(value), nil
+	} else if value, ok := datum.(uint32); ok {
+		return float32(value), nil
+	} else if value, ok := datum.(uint16); ok {
+		return float32(value), nil
+	} else if value, ok := datum.(uint8); ok {
+		return float32(value), nil
+	} else if value, ok := datum.(string); ok {
+		return strconv.ParseFloat(value, 32)
+	} else if value, ok := datum.(fmt.Stringer); ok {
+		return s.Generic(value.String())
+	} else {
+		return nil, fmt.Errorf("don't know how to convert datum to a float value: %v", datum)
+	}
+}
+
 // Type returns a type constant for this FloatSchema.
 func (*FloatSchema) Type() int {
 	return Float
@@ -371,6 +488,38 @@ func (*DoubleSchema) String() string {
 	return `{"type": "double"}`
 }
 
+// Converts go runtime datum into a value acceptable by this schema
+func (s *DoubleSchema) Generic(datum interface{}) (interface{}, error) {
+	if value, ok := datum.(float64); ok {
+		return float64(value), nil
+	} else if value, ok := datum.(float32); ok {
+		return float64(value), nil
+	} else if value, ok := datum.(int64); ok {
+		return float64(value), nil
+	} else if value, ok := datum.(int); ok {
+		return float64(value), nil
+	} else if value, ok := datum.(int32); ok {
+		return float64(value), nil
+	} else if value, ok := datum.(int16); ok {
+		return float64(value), nil
+	} else if value, ok := datum.(int8); ok {
+		return float64(value), nil
+	} else if value, ok := datum.(uint64); ok {
+		return float64(value), nil
+	} else if value, ok := datum.(uint32); ok {
+		return float64(value), nil
+	} else if value, ok := datum.(uint16); ok {
+		return float64(value), nil
+	} else if value, ok := datum.(uint8); ok {
+		return float64(value), nil
+	} else if value, ok := datum.(string); ok {
+		return strconv.ParseFloat(value, 64)
+	} else if value, ok := datum.(fmt.Stringer); ok {
+		return s.Generic(value.String())
+	} else {
+		return nil, fmt.Errorf("don't know how to convert datum to a double value: %v", datum)
+	}
+}
 // Type returns a type constant for this DoubleSchema.
 func (*DoubleSchema) Type() int {
 	return Double
@@ -417,6 +566,31 @@ func (*BooleanSchema) String() string {
 	return `{"type": "boolean"}`
 }
 
+// Converts go runtime datum into a value acceptable by this schema
+func (s *BooleanSchema) Generic(datum interface{}) (interface{}, error) {
+	if value, ok := datum.(bool); ok {
+		return value, nil
+	} else if value, ok := datum.(int); ok && value > 0 {
+		return true, nil
+	} else if value, ok := datum.(int); ok && value <= 0 {
+		return false, nil
+	} else if value, ok := datum.(float32); ok && value > 0 {
+		return true, nil
+	} else if value, ok := datum.(float32); ok && value <= 0 {
+		return false, nil
+	} else if value, ok := datum.(float64); ok && value > 0 {
+		return true, nil
+	} else if value, ok := datum.(float64); ok && value <= 0 {
+		return false, nil
+	} else if value, ok := datum.(string); ok {
+		return strconv.ParseBool(value)
+	} else if value, ok := datum.(fmt.Stringer); ok {
+		return s.Generic(value.String())
+	} else {
+		return nil, fmt.Errorf("don't know how to convert datum to a bool value: %v", datum)
+	}
+}
+
 // Type returns a type constant for this BooleanSchema.
 func (*BooleanSchema) Type() int {
 	return Boolean
@@ -461,6 +635,15 @@ func (*NullSchema) Fingerprint() (*Fingerprint, error) {
 // String returns a JSON representation of NullSchema.
 func (*NullSchema) String() string {
 	return `{"type": "null"}`
+}
+
+// Converts go runtime datum into a value acceptable by this schema
+func (s *NullSchema) Generic(datum interface{}) (interface{}, error) {
+	if datum == nil {
+		return nil, nil
+	} else {
+		return nil, fmt.Errorf("don't know how to convert datum to a null value: %v", datum)
+	}
 }
 
 // Type returns a type constant for this NullSchema.
@@ -621,6 +804,56 @@ func (s *RecordSchema) GetName() string {
 	return s.Name
 }
 
+// Converts go runtime datum into a value acceptable by this schema
+func (s *RecordSchema) Generic(datum interface{}) (interface{}, error) {
+
+	if rec, ok := datum.(*GenericRecord); ok {
+		return rec, nil
+	} else if rec, ok := datum.(GenericRecord); ok {
+		return &rec, nil
+	} else {
+		dict := make(map[string]interface{})
+		for _, field := range s.Fields {
+			if stringMap, ok := datum.(map[string]interface{}); ok {
+				if v, ok := stringMap[field.Name]; ok {
+					if val, err := field.Type.Generic(v); err != nil {
+						return nil, err
+					} else {
+						dict[field.Name] = val
+					}
+					continue
+				}
+			} else if genericMap, ok := datum.(map[interface{}]interface{}); ok {
+				if v, ok := genericMap[field.Name]; ok {
+					if val, err := field.Type.Generic(v); err != nil {
+						return nil, err
+					} else {
+						dict[field.Name] = val
+					}
+					continue
+				}
+			} else {
+				return nil, fmt.Errorf("don't know how to convert datum to a generic record: %v", datum)
+			}
+			if val, err := field.Type.Generic(field.Default); err == nil {
+				dict[field.Name] = val
+			} else {
+				return nil, fmt.Errorf("field doesn't have a valid default and is missing: %v", field.Name)
+			}
+		}
+		rec := NewGenericRecord(s)
+		rec.fields = dict
+		return rec, nil
+	}
+
+
+	if datum == nil {
+		return nil, nil
+	} else {
+		return nil, fmt.Errorf("don't know how to convert datum to a generic record: %v", datum)
+	}
+}
+
 // Prop gets a custom non-reserved property from this schema and a bool representing if it exists.
 func (s *RecordSchema) Prop(key string) (interface{}, bool) {
 	if s.Properties != nil {
@@ -689,6 +922,11 @@ func newRecursiveSchema(parent *RecordSchema) *RecursiveSchema {
 // String returns a JSON representation of RecursiveSchema.
 func (s *RecursiveSchema) String() string {
 	return fmt.Sprintf(`{"type": "%s"}`, s.Actual.GetName())
+}
+
+// Converts go runtime datum into a value acceptable by this schema
+func (s *RecursiveSchema) Generic(datum interface{}) (interface{}, error) {
+	return s.Actual.Generic(datum)
 }
 
 // Type returns a type constant for this RecursiveSchema.
@@ -812,6 +1050,37 @@ func (s *EnumSchema) String() string {
 	return string(bytes)
 }
 
+// Converts go runtime datum into a value acceptable by this schema
+func (s *EnumSchema) Generic(datum interface{}) (interface{}, error) {
+	contains := func(symbol string ) bool {
+		for _, _symbol := range s.Symbols {
+			if _symbol == symbol {
+				return true
+			}
+		}
+		return false
+	}
+	if e, ok := datum.(*GenericEnum); ok {
+		return e, nil
+	} else if e, ok := datum.(GenericEnum); ok {
+		return &e, nil
+	} else if symbol, ok := datum.(string); ok && contains(symbol) {
+		e := NewGenericEnum(s.Symbols)
+		e.Set(symbol)
+		return e, nil
+	} else if index, ok := datum.(int32); ok && index >= 0 && int(index) < len(s.Symbols) {
+		e := NewGenericEnum(s.Symbols)
+		e.SetIndex(index)
+		return e, nil
+	} else if index, ok := datum.(int); ok && index >= 0 && index < len(s.Symbols) {
+		e := NewGenericEnum(s.Symbols)
+		e.SetIndex(int32(index))
+		return e, nil
+	} else {
+		return nil, fmt.Errorf("don't know how to convert datum to an enum value: %v", datum)
+	}
+}
+
 // Type returns a type constant for this EnumSchema.
 func (*EnumSchema) Type() int {
 	return Enum
@@ -834,7 +1103,7 @@ func (s *EnumSchema) Prop(key string) (interface{}, bool) {
 }
 
 // Validate checks whether the given value is writeable to this schema.
-func (*EnumSchema) Validate(v reflect.Value) bool {
+func (s *EnumSchema) Validate(v reflect.Value) bool {
 	//TODO implement
 	return true
 }
@@ -888,6 +1157,23 @@ func (s *ArraySchema) String() string {
 	}
 
 	return string(bytes)
+}
+
+// Converts go runtime datum into a value acceptable by this schema
+func (s *ArraySchema) Generic(datum interface{}) (interface{}, error) {
+	if a, ok := datum.([]interface{}); ok {
+		slice := make([]interface{}, len(a))
+		for i, v := range a {
+			if val, err := s.Items.Generic(v); err != nil {
+				return nil, err
+			} else {
+				slice[i] = val
+			}
+		}
+		return slice, nil
+	} else {
+		return nil, fmt.Errorf("don't know how to convert datum to an array value: %v", datum)
+	}
 }
 
 // Type returns a type constant for this ArraySchema.
@@ -968,6 +1254,39 @@ func (s *MapSchema) String() string {
 	return string(bytes)
 }
 
+// Converts go runtime datum into a value acceptable by this schema
+func (s *MapSchema) Generic(datum interface{}) (interface{}, error) {
+	dict := make(map[string]interface{})
+	if stringMap, ok := datum.(map[string]interface{}); ok {
+		for field, v := range stringMap {
+			if val, err := s.Values.Generic(v); err != nil {
+				return nil, err
+			} else {
+				dict[field] = val
+			}
+		}
+	} else if genericMap, ok := datum.(map[interface{}]interface{}); ok {
+		for k, v := range genericMap {
+			field := ""
+			if f, ok := k.(string); ok {
+				field = f
+			} else if f, ok := k.(fmt.Stringer); ok {
+				field = f.String()
+			}
+			if field != "" {
+				if val, err := s.Values.Generic(v); err != nil {
+					return nil, err
+				} else {
+					dict[field] = val
+				}
+			}
+		}
+	} else {
+		return nil, fmt.Errorf("don't know how to convert datum to a map value: %v", datum)
+	}
+	return dict, nil
+}
+
 // Type returns a type constant for this MapSchema.
 func (*MapSchema) Type() int {
 	return Map
@@ -1041,6 +1360,17 @@ func (s *UnionSchema) String() string {
 	}
 
 	return fmt.Sprintf(`{"type": %s}`, string(bytes))
+}
+
+
+// Converts go runtime datum into a value acceptable by this schema
+func (s *UnionSchema) Generic(datum interface{}) (interface{}, error) {
+	for _, u := range s.Types {
+		if val, err := u.Generic(datum); err == nil {
+			return val, nil
+		}
+	}
+	return nil, fmt.Errorf("don't know how to convert datum to an union value: %v", datum)
 }
 
 // Type returns a type constant for this UnionSchema.
@@ -1154,6 +1484,18 @@ func (s *FixedSchema) String() string {
 	}
 
 	return string(bytes)
+}
+
+
+// Converts go runtime datum into a value acceptable by this schema
+func (s *FixedSchema) Generic(datum interface{}) (interface{}, error) {
+	if slice, ok := datum.([]byte); ok && len(slice) == s.Size {
+		return slice, nil
+	} else if plain, ok := datum.(string); ok && len(plain) == s.Size {
+		return []byte(plain), nil
+	} else {
+		return nil, fmt.Errorf("don't know how to convert datum to a fixed value: %v", datum)
+	}
 }
 
 // Type returns a type constant for this FixedSchema.

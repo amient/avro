@@ -66,6 +66,15 @@ func (enum *GenericEnum) SetIndex(index int32) {
 	enum.index = index
 }
 
+func (enum *GenericEnum) String() string {
+	return enum.Symbols[enum.index]
+}
+
+func (enum *GenericEnum) MarshalJSON() ([]byte, error) {
+	return []byte(fmt.Sprintf(`"%v"`, enum.Symbols[enum.index])), nil
+}
+
+
 // Set sets the string value for this enum (e.g. symbol).
 // Panics if the given symbol does not exist in this enum.
 func (enum *GenericEnum) Set(symbol string) {
