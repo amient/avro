@@ -80,26 +80,48 @@ func (gr *GenericRecord) SetAll(data interface{}) {
 	convertValue = func(data interface{}, schema Schema) (result interface{}) {
 		if recordSchema, ok := schema.(*RecordSchema); ok {
 			dict := make(map[string]interface{})
-			for k, v := range data.(map[interface{}]interface{}) {
-				field := stringKey(k)
+			findAndSet := func(field string, v interface{}) {
 				if field != "" {
 					for _, s := range recordSchema.Fields {
 						if s.Name == field {
 							dict[field] = convertValue(v, s.Type)
+							break
 						}
 					}
 				}
 			}
-			result = GenericRecord{
-				schema: recordSchema,
-				fields: dict,
+			if stringMap, ok := data.(map[string]interface{}); ok {
+				for field, v := range stringMap {
+					findAndSet(field, v)
+				}
+			} else if stringMap, ok := data.(map[fmt.Stringer]interface{}); ok {
+				for field, v := range stringMap {
+					findAndSet(stringKey(field.String()), v)
+				}
+			} else if genericMap, ok := data.(map[interface{}]interface{}); ok {
+				for k, v := range genericMap {
+					findAndSet(stringKey(k), v)
+				}
 			}
+			rec := NewGenericRecord(recordSchema)
+			rec.fields = dict
+			result = rec
 		} else if mapSchema, ok := schema.(*MapSchema); ok {
 			dict := make(map[string]interface{})
-			for k, v := range data.(map[interface{}]interface{}) {
-				field := stringKey(k)
-				if field != "" {
+			if stringMap, ok := data.(map[string]interface{}); ok {
+				for field, v := range stringMap {
 					dict[field] = convertValue(v, mapSchema.Values)
+				}
+			} else if stringMap, ok := data.(map[fmt.Stringer]interface{}); ok {
+				for field, v := range stringMap {
+					dict[field.String()] = convertValue(v, mapSchema.Values)
+				}
+			} else if genericMap, ok := data.(map[interface{}]interface{}); ok {
+				for k, v := range genericMap {
+					field := stringKey(k)
+					if field != "" {
+						dict[field] = convertValue(v, mapSchema.Values)
+					}
 				}
 			}
 			result = dict
@@ -115,7 +137,7 @@ func (gr *GenericRecord) SetAll(data interface{}) {
 		}
 		return
 	}
-	gr.fields = convertValue(data, gr.schema).(GenericRecord).fields
+	gr.fields = convertValue(data, gr.schema).(*GenericRecord).fields
 
 }
 

@@ -21,7 +21,8 @@ func TestGenericDatumFromMap(t *testing.T) {
 
 	generic := NewGenericRecord(schema)
 
-	generic.SetAll(map[interface{}]interface{} {
+	type X string
+	generic.SetAll(map[string]interface{} {
 		"dict": map[interface{}]interface{} {
 			"A1": []interface{} { "abc", "def" },
 			"G1": []interface{} { "ghi", "jkl" },
@@ -31,3 +32,4 @@ func TestGenericDatumFromMap(t *testing.T) {
 	assert(t, generic.String(), `{"dict":{"A1":["abc","def"],"G1":["ghi","jkl"]}}`)
 
 }
+
