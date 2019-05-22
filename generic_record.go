@@ -65,6 +65,10 @@ func (gr *GenericRecord) String() string {
 	return string(buf)
 }
 
+func (gr *GenericRecord) SetAll(fields map[string]interface{}) {
+	gr.fields = fields
+}
+
 // Map returns a map representation of this GenericRecord.
 func (gr *GenericRecord) Map() map[string]interface{} {
 	m := make(map[string]interface{})
