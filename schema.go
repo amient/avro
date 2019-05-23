@@ -1074,21 +1074,21 @@ func (s *EnumSchema) Generic(datum interface{}) (interface{}, error) {
 		return false
 	}
 	if e, ok := datum.(*GenericEnum); ok {
-		return e, nil
+		return *e, nil
 	} else if e, ok := datum.(GenericEnum); ok {
-		return &e, nil
+		return e, nil
 	} else if symbol, ok := datum.(string); ok && contains(symbol) {
 		e := NewGenericEnum(s.Symbols)
 		e.Set(symbol)
-		return e, nil
+		return *e, nil
 	} else if index, ok := datum.(int32); ok && index >= 0 && int(index) < len(s.Symbols) {
 		e := NewGenericEnum(s.Symbols)
 		e.SetIndex(index)
-		return e, nil
+		return *e, nil
 	} else if index, ok := datum.(int); ok && index >= 0 && index < len(s.Symbols) {
 		e := NewGenericEnum(s.Symbols)
 		e.SetIndex(int32(index))
-		return e, nil
+		return *e, nil
 	} else {
 		return nil, fmt.Errorf("don't know how to convert datum to an enum value: %v", datum)
 	}

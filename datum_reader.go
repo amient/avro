@@ -72,11 +72,11 @@ func (enum *GenericEnum) String() string {
 	return enum.Symbols[enum.index]
 }
 
-func (enum *GenericEnum) MarshalJSON() ([]byte, error) {
+func (enum GenericEnum) MarshalJSON() ([]byte, error) {
 	return []byte(fmt.Sprintf(`"%v"`, enum.Symbols[enum.index])), nil
 }
 
-func (enum *GenericEnum) MarshalYAML() (interface{}, error) {
+func (enum GenericEnum) MarshalYAML() (interface{}, error) {
 	return enum.Symbols[enum.index], nil
 }
 

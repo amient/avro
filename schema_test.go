@@ -526,6 +526,10 @@ func TestSchemaConvertGeneric(t *testing.T) {
 				"name": "option2",
 				"type": [ "null", { "type": "map", "values": "long" }],
 				"default": null
+			}, {
+				"name": "option3",
+				"type": [ "null", { "type": "enum", "name": "something", "symbols": [ "A", "B", "C"] }],
+				"default": "A"
 			}
 	    ]
 	}`)
@@ -535,6 +539,7 @@ func TestSchemaConvertGeneric(t *testing.T) {
 		Select GenericEnum
 		Option *GenericEnum
 		Option2 *map[string]uint64
+		Option3 *GenericEnum
 	}
 
 	datum := map[string]interface{} {
@@ -553,7 +558,7 @@ func TestSchemaConvertGeneric(t *testing.T) {
 	if !ok {
 		panic("not a record")
 	}
-	assert(t, rec.String(), `{"dict":{"A1":["abc","def"],"G1":["ghi","jkl"]},"option":"C","option2":null,"select":"B"}`)
+	assert(t, rec.String(), `{"dict":{"A1":["abc","def"],"G1":["ghi","jkl"]},"option":"C","option2":null,"option3":"A","select":"B"}`)
 
 	var datum2 map[string]interface{}
 	if err := json.Unmarshal([]byte(rec.String()), &datum2); err != nil {
