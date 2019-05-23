@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 // ***********************
@@ -1038,6 +1039,7 @@ type EnumSchema struct {
 	Doc         string
 	Symbols     []string
 	Properties  map[string]interface{}
+	symbolsToIndex map[string]int32
 	fingerprint *Fingerprint
 }
 
@@ -1078,19 +1080,43 @@ func (s *EnumSchema) Generic(datum interface{}) (interface{}, error) {
 	} else if e, ok := datum.(GenericEnum); ok {
 		return e, nil
 	} else if symbol, ok := datum.(string); ok && contains(symbol) {
-		e := NewGenericEnum(s.Symbols)
+		e := NewGenericEnum(s)
 		e.Set(symbol)
 		return *e, nil
 	} else if index, ok := datum.(int32); ok && index >= 0 && int(index) < len(s.Symbols) {
-		e := NewGenericEnum(s.Symbols)
+		e := NewGenericEnum(s)
 		e.SetIndex(index)
 		return *e, nil
 	} else if index, ok := datum.(int); ok && index >= 0 && index < len(s.Symbols) {
-		e := NewGenericEnum(s.Symbols)
+		e := NewGenericEnum(s)
 		e.SetIndex(int32(index))
 		return *e, nil
 	} else {
 		return nil, fmt.Errorf("don't know how to convert datum to an enum value: %v", datum)
+	}
+}
+
+var symbolsToIndexCache = make(map[string]map[string]int32)
+var symbolsToIndexCacheLock sync.Mutex
+
+// Type returns a type constant for this EnumSchema.
+func (s *EnumSchema) IndexOf(symbol string) int32 {
+	if s.symbolsToIndex == nil {
+		fullName := GetFullName(s)
+		symbolsToIndexCacheLock.Lock()
+		if s.symbolsToIndex = symbolsToIndexCache[fullName]; s.symbolsToIndex == nil {
+			s.symbolsToIndex = make(map[string]int32)
+			for i, symbol := range s.Symbols {
+				s.symbolsToIndex[symbol] = int32(i)
+			}
+			symbolsToIndexCache[fullName] = s.symbolsToIndex
+		}
+		symbolsToIndexCacheLock.Unlock()
+	}
+	if index, ok := s.symbolsToIndex[symbol]; ok {
+		return index
+	} else {
+		return -1
 	}
 }
 
@@ -1147,7 +1173,7 @@ func (s *EnumSchema) MarshalJSON() ([]byte, error) {
 }
 
 func (s *EnumSchema) Value(symbol string) GenericEnum {
-	enum := NewGenericEnum(s.Symbols)
+	enum := NewGenericEnum(s)
 	enum.Set(symbol)
 	return *enum
 }

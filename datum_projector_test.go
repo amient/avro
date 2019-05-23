@@ -213,7 +213,6 @@ func TestEmptyStructRefs(t *testing.T) {
 
 	val0 := &Position{
 		Enum: MyEnum.Value("B"),
-
 	}
 	buffer := new(bytes.Buffer)
 	NewDatumWriter(schema).Write(val0, NewBinaryEncoder(buffer))
@@ -223,7 +222,7 @@ func TestEmptyStructRefs(t *testing.T) {
 	if err := val1reader.Read(val1, NewBinaryDecoder(buffer.Bytes())); err != nil {
 		panic(err)
 	} else {
-		assert(t, `{"Enum":"B","back":null,"front":null,"optionalEnum":null}`, val1.String())
+		assert(t, val1.String(), `{"Enum":"B","back":null,"front":null,"optionalEnum":null}`)
 	}
 
 	val2 := new(Position)

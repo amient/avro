@@ -296,26 +296,24 @@ func newProjector(readerSchema, writerSchema Schema) (projector, error) {
 
 func newEnumProjector(readerSchema, writerSchema *EnumSchema) (projector, error) {
 	return &enumProjector{
-		readerSymbols: readerSchema.Symbols,
-		writerSymbols: writerSchema.Symbols,
-		readerSymbolIndex: NewGenericEnum(readerSchema.Symbols).symbolsToIndex,
+		readerSchema: readerSchema,
+		writerSchema: writerSchema,
 	}, nil
 
 }
 type enumProjector struct {
-	readerSymbols []string
-	writerSymbols []string
-	readerSymbolIndex map[string]int32
+	readerSchema *EnumSchema
+	writerSchema *EnumSchema
 }
 
 func(p *enumProjector) Unwrap(dec Decoder) (interface{}, error) {
 	if enumIndex, err := dec.ReadEnum(); err != nil {
 		return nil, err
-	} else if enumIndex < 0 || int(enumIndex) >= len(p.writerSymbols) {
-		return nil, fmt.Errorf("invalid index %v for enum symbol set: %v", enumIndex, p.writerSymbols)
+	} else if enumIndex < 0 || int(enumIndex) >= len(p.writerSchema.Symbols) {
+		return nil, fmt.Errorf("invalid index %v for enum symbol set: %v", enumIndex, p.writerSchema.Symbols)
 	} else {
-		writerSymbol := p.writerSymbols[enumIndex]
-		if readerSymbolIndex, ok := p.readerSymbolIndex[writerSymbol]; ok {
+		writerSymbol := p.writerSchema.Symbols[enumIndex]
+		if readerSymbolIndex := p.readerSchema.IndexOf(writerSymbol); readerSymbolIndex >= 0 {
 			return readerSymbolIndex, nil
 		}
 		return nil, fmt.Errorf("reader enum schema doesn't contain )")
@@ -326,7 +324,7 @@ func (p *enumProjector) Project(target reflect.Value, dec Decoder) error {
 	if v, err := p.Unwrap(dec); err != nil {
 		return err
 	} else if v != nil {
-		enum := GenericEnum{Symbols: p.readerSymbols}
+		enum := GenericEnum{schema: p.readerSchema}
 		if i, ok := v.(int32); ok {
 			enum.SetIndex(i)
 		}

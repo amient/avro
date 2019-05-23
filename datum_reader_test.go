@@ -129,8 +129,8 @@ func TestComplexBinding(t *testing.T) {
 
 			enumValues := []string{"A", "B", "C", "D"}
 			for i := 0; i < len(enumValues); i++ {
-				if enumValues[i] != c.EnumField.Symbols[i] {
-					t.Errorf("Invalid enum value in sequence: expected %v, actual %v", enumValues[i], c.EnumField.Symbols[i])
+				if enumValues[i] != c.EnumField.schema.Symbols[i] {
+					t.Errorf("Invalid enum value in sequence: expected %v, actual %v", enumValues[i], c.EnumField.schema.Symbols[i])
 				}
 			}
 
@@ -260,8 +260,8 @@ func TestComplexOfComplexBinding(t *testing.T) {
 
 			enumValues := []string{"A", "B", "C", "D"}
 			for i := 0; i < len(enumValues); i++ {
-				if enumValues[i] != c.NullOrRecordUnion.EnumRecordField.Symbols[i] {
-					t.Errorf("Invalid enum value in sequence: expected %v, actual %v", enumValues[i], c.NullOrRecordUnion.EnumRecordField.Symbols[i])
+				if enumValues[i] != c.NullOrRecordUnion.EnumRecordField.schema.Symbols[i] {
+					t.Errorf("Invalid enum value in sequence: expected %v, actual %v", enumValues[i], c.NullOrRecordUnion.EnumRecordField.schema.Symbols[i])
 				}
 			}
 
@@ -710,7 +710,7 @@ func specificReaderComplexVal() (Schema, []byte) {
 	if err != nil {
 		panic(err)
 	}
-	e := NewGenericEnum([]string{"A", "B", "C", "D"})
+	e := NewGenericEnum(&EnumSchema{Symbols: []string{"A", "B", "C", "D"}})
 	e.Set("A")
 	c := newComplex()
 	c.EnumField.Set("A")
