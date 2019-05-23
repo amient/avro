@@ -260,7 +260,7 @@ func (writer *SpecificDatumWriter) writeEnum(v reflect.Value, enc Encoder, s *En
 	if !s.Validate(v) {
 		return fmt.Errorf("Invalid enum value: %v (SpecificDatumWriter)", v.Interface())
 	}
-	enum := dereference(v).Interface().(GenericEnum)
+	enum := dereference(v).Interface().(EnumValue)
 	index := enum.index
 	if index == -2 {
 		index = s.IndexOf(enum.unresolved)
@@ -530,14 +530,14 @@ func (writer *GenericDatumWriter) writeMap(v interface{}, enc Encoder, s Schema)
 func (writer *GenericDatumWriter) writeEnum(v interface{}, enc Encoder, s *EnumSchema) error {
 	var index int32
 	switch value := v.(type) {
-	case *GenericEnum:
+	case *EnumValue:
 			index = value.index
-	case GenericEnum:
+	case EnumValue:
 			index = value.index
 	case string:
 			index = s.IndexOf(v.(string))
 	default:
-		return fmt.Errorf("%v is not a *GenericEnum", v)
+		return fmt.Errorf("%v is not a *EnumValue", v)
 	}
 	if index < 0 || int(index) >= len(s.Symbols) {
 		return fmt.Errorf("Invalid index value %v for enum %v", index, s.GetName())
@@ -588,8 +588,8 @@ func (writer *GenericDatumWriter) isWritableAs(v interface{}, s Schema) bool {
 	case *MapSchema:
 		return reflect.ValueOf(v).Kind() == reflect.Map
 	case *EnumSchema:
-		_, ok1 := v.(*GenericEnum)
-		_, ok2 := v.(GenericEnum)
+		_, ok1 := v.(*EnumValue)
+		_, ok2 := v.(EnumValue)
 		ok = ok1 || ok2
 	case *UnionSchema:
 		panic("Nested unions not supported") //this is a part of spec: http://avro.apache.org/docs/current/spec.html#binary_encode_complex

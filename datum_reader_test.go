@@ -67,7 +67,7 @@ func TestPrimitiveBinding(t *testing.T) {
 type Complex struct {
 	StringArray []string
 	LongArray   []int64
-	EnumField   GenericEnum
+	EnumField   EnumValue
 	MapOfInts   map[string]int32
 	UnionField  string
 	FixedField  []byte
@@ -178,7 +178,7 @@ type testRecord2 struct {
 
 type testRecord3 struct {
 	StringArray     []string
-	EnumRecordField GenericEnum
+	EnumRecordField EnumValue
 }
 
 func TestComplexOfComplexBinding(t *testing.T) {
@@ -617,7 +617,7 @@ func enumRaceTest(t *testing.T, schemas []Schema) {
 
 func TestEnumNegativeRegression(t *testing.T) {
 	var playingCard struct {
-		Type *GenericEnum
+		Type *EnumValue
 	}
 	var genericDest = NewGenericRecord(schemaEnumA)
 	reader := NewDatumReader(schemaEnumA)
@@ -710,7 +710,7 @@ func specificReaderComplexVal() (Schema, []byte) {
 	if err != nil {
 		panic(err)
 	}
-	e := NewGenericEnum(&EnumSchema{Symbols: []string{"A", "B", "C", "D"}})
+	e := NewEnumValue("A", &EnumSchema{Symbols: []string{"A", "B", "C", "D"}})
 	e.Set("A")
 	c := newComplex()
 	c.EnumField.Set("A")

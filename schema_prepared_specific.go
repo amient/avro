@@ -37,7 +37,7 @@ func enumDec(schema *EnumSchema) preparedDecoder {
 		if err != nil {
 			return reflect.ValueOf(enumIndex), err
 		}
-		enum := &GenericEnum{
+		enum := &EnumValue{
 			schema: schema,
 			index:  enumIndex,
 		}

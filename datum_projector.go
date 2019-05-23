@@ -324,7 +324,7 @@ func (p *enumProjector) Project(target reflect.Value, dec Decoder) error {
 	if v, err := p.Unwrap(dec); err != nil {
 		return err
 	} else if v != nil {
-		enum := GenericEnum{schema: p.readerSchema}
+		enum := EnumValue{schema: p.readerSchema}
 		if i, ok := v.(int32); ok {
 			enum.SetIndex(i)
 		}

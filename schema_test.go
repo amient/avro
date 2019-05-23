@@ -536,10 +536,10 @@ func TestSchemaConvertGeneric(t *testing.T) {
 
 	type Datum struct {
 		Dict    map[string][]string
-		Select  GenericEnum
-		Option  *GenericEnum
+		Select  EnumValue
+		Option  *EnumValue
 		Option2 *map[string]uint64
-		Option3 *GenericEnum
+		Option3 *EnumValue
 	}
 
 	datum := map[string]interface{}{

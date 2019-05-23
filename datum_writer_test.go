@@ -399,7 +399,7 @@ func BenchmarkSpecificDatumWriter(b *testing.B) {
 type _complex struct {
 	StringArray []string
 	LongArray   []int64
-	EnumField   GenericEnum
+	EnumField   EnumValue
 	MapOfInts   map[string]int32
 	UnionField  interface{}
 	FixedField  []byte

@@ -27,34 +27,34 @@ type DatumReader interface {
 	Read(v interface{}, dec Decoder) error
 }
 
-// GenericEnum is a generic Avro enum representation. This is still subject to change and may be rethought.
-type GenericEnum struct {
+// EnumValue is a generic Avro enum representation. This is still subject to change and may be rethought.
+type EnumValue struct {
 	// Avro enum symbols.
 	schema     *EnumSchema
 	index      int32
 	unresolved string
 }
 
-// NewGenericEnum returns a new GenericEnum that uses provided enum symbols.
-func NewGenericEnum(schema *EnumSchema) *GenericEnum {
-	return &GenericEnum{
+// NewGenericEnum returns a new EnumValue that uses provided enum symbols.
+func NewEnumValue(symbol string, schema *EnumSchema) *EnumValue {
+	return &EnumValue{
 		schema: schema,
-		index:  -1,
+		index:  schema.IndexOf(symbol),
 	}
 }
 
 // GetIndex gets the numeric value for this enum.
-func (enum GenericEnum) GetIndex() int32 {
+func (enum EnumValue) GetIndex() int32 {
 	return enum.index
 }
 
 // SetIndex sets the numeric value for this enum.
-func (enum *GenericEnum) SetIndex(index int32) {
+func (enum *EnumValue) SetIndex(index int32) {
 	enum.index = index
 }
 
 // Get gets the string value for this enum (e.g. symbol).
-func (enum GenericEnum) String() string {
+func (enum EnumValue) String() string {
 	if enum.index == -2 {
 		return enum.unresolved
 	} else {
@@ -62,11 +62,11 @@ func (enum GenericEnum) String() string {
 	}
 }
 
-func (enum GenericEnum) MarshalJSON() ([]byte, error) {
+func (enum EnumValue) MarshalJSON() ([]byte, error) {
 	return []byte(fmt.Sprintf(`"%v"`, enum.schema.Symbols[enum.index])), nil
 }
 
-func (enum *GenericEnum) UnmarshalJSON(data []byte) error {
+func (enum *EnumValue) UnmarshalJSON(data []byte) error {
 	symbol := strings.Trim(string(data), `"`)
 	if enum.schema == nil {
 		enum.unresolved = symbol
@@ -77,7 +77,7 @@ func (enum *GenericEnum) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (enum GenericEnum) MarshalYAML() (interface{}, error) {
+func (enum EnumValue) MarshalYAML() (interface{}, error) {
 	if enum.index == -2 {
 		return enum.unresolved, nil
 	} else if enum.index < 0 || int(enum.index) > len(enum.schema.Symbols) {
@@ -87,7 +87,7 @@ func (enum GenericEnum) MarshalYAML() (interface{}, error) {
 	}
 }
 
-func (enum *GenericEnum) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (enum *EnumValue) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var symbol string
 	if err := unmarshal(&symbol); err != nil {
 		return err
@@ -102,7 +102,7 @@ func (enum *GenericEnum) UnmarshalYAML(unmarshal func(interface{}) error) error 
 }
 
 // Set sets the string value for this enum (e.g. symbol).
-func (enum *GenericEnum) Set(symbol string) {
+func (enum *EnumValue) Set(symbol string) {
 	if enum.schema == nil {
 		enum.index = -2
 		enum.unresolved = symbol
@@ -377,7 +377,7 @@ func (reader sDatumReader) mapEnum(field Schema, dec Decoder) (reflect.Value, er
 		return reflect.Value{}, fmt.Errorf("Enum index %d too high for enum %s", enumIndex, field.GetName())
 	}
 
-	return reflect.ValueOf(GenericEnum{
+	return reflect.ValueOf(EnumValue{
 		schema: schema,
 		index:  enumIndex,
 	}), nil
@@ -513,12 +513,12 @@ func (reader *GenericDatumReader) findAndSet(record *GenericRecord, field *Schem
 	}
 
 	switch typedValue := value.(type) {
-	case *GenericEnum:
+	case *EnumValue:
 		if int(typedValue.index) >= len(typedValue.schema.Symbols) {
 			return errors.New(fmt.Sprintf("Enum index invalid! %v from: %v", typedValue.index, typedValue.schema.Symbols))
 		}
 		record.Set(field.Name, typedValue.schema.Symbols[typedValue.index])
-	case GenericEnum:
+	case EnumValue:
 		if int(typedValue.index) >= len(typedValue.schema.Symbols) {
 			return errors.New(fmt.Sprintf("Enum index invalid! %v from: %v", typedValue.index, typedValue.schema.Symbols))
 		}
@@ -601,7 +601,7 @@ func (reader *GenericDatumReader) mapArray(field Schema, dec Decoder) ([]interfa
 	return array, nil
 }
 
-func (reader *GenericDatumReader) mapEnum(field Schema, dec Decoder) (*GenericEnum, error) {
+func (reader *GenericDatumReader) mapEnum(field Schema, dec Decoder) (*EnumValue, error) {
 	enumIndex, err := dec.ReadEnum()
 	if err != nil {
 		return nil, err
@@ -611,7 +611,7 @@ func (reader *GenericDatumReader) mapEnum(field Schema, dec Decoder) (*GenericEn
 
 	schema := field.(*EnumSchema)
 
-	enum := &GenericEnum{
+	enum := &EnumValue{
 		schema: schema,
 		index:  enumIndex,
 	}

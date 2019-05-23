@@ -1075,21 +1075,18 @@ func (s *EnumSchema) Generic(datum interface{}) (interface{}, error) {
 		}
 		return false
 	}
-	if e, ok := datum.(*GenericEnum); ok {
+	if e, ok := datum.(*EnumValue); ok {
 		return *e, nil
-	} else if e, ok := datum.(GenericEnum); ok {
+	} else if e, ok := datum.(EnumValue); ok {
 		return e, nil
 	} else if symbol, ok := datum.(string); ok && contains(symbol) {
-		e := NewGenericEnum(s)
-		e.Set(symbol)
+		e := NewEnumValue(symbol, s)
 		return *e, nil
 	} else if index, ok := datum.(int32); ok && index >= 0 && int(index) < len(s.Symbols) {
-		e := NewGenericEnum(s)
-		e.SetIndex(index)
+		e := NewEnumValue(s.Symbols[index], s)
 		return *e, nil
 	} else if index, ok := datum.(int); ok && index >= 0 && index < len(s.Symbols) {
-		e := NewGenericEnum(s)
-		e.SetIndex(int32(index))
+		e := NewEnumValue(s.Symbols[int32(index)], s)
 		return *e, nil
 	} else {
 		return nil, fmt.Errorf("don't know how to convert datum to an enum value: %v", datum)
@@ -1143,7 +1140,7 @@ func (s *EnumSchema) Prop(key string) (interface{}, bool) {
 
 // Validate checks whether the given value is writeable to this schema.
 func (s *EnumSchema) Validate(v reflect.Value) bool {
-	if _, ok := dereference(v).Interface().(GenericEnum); ok {
+	if _, ok := dereference(v).Interface().(EnumValue); ok {
 		return true
 	} else {
 		return false
@@ -1172,9 +1169,8 @@ func (s *EnumSchema) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func (s *EnumSchema) Value(symbol string) GenericEnum {
-	enum := NewGenericEnum(s)
-	enum.Set(symbol)
+func (s *EnumSchema) Value(symbol string) EnumValue {
+	enum := NewEnumValue(symbol, s)
 	return *enum
 }
 

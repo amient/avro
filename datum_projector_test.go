@@ -203,10 +203,10 @@ func TestEmptyStructRefs(t *testing.T) {
     }`)
 
 	type Position struct {
-		Front *struct {Info string}
-		Back *struct {Title string}
-		Enum GenericEnum
-		OptionalEnum *GenericEnum
+		Front        *struct {Info string}
+		Back         *struct {Title string}
+		Enum         EnumValue
+		OptionalEnum *EnumValue
 	}
 
 	var MyEnum = EnumSchema{Symbols: []string{"A", "B", "C"}}
@@ -410,7 +410,7 @@ func TestProjections(t *testing.T) {
 		MapOfUnions  map[string]*string
 		BoolOption   *bool
 		NestedOption *NestedV1
-		//ExtendedEnum *GenericEnum
+		//ExtendedEnum *EnumValue
 	}
 
 	type NestedV2 struct {
