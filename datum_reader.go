@@ -366,12 +366,11 @@ func (reader sDatumReader) mapEnum(field Schema, dec Decoder) (reflect.Value, er
 		return reflect.Value{}, fmt.Errorf("Enum index %d too high for enum %s", enumIndex, field.GetName())
 	}
 
-	enum := &GenericEnum{
+	return reflect.ValueOf(GenericEnum{
 		Symbols:        schema.Symbols,
 		symbolsToIndex: symbolsToIndex,
 		index:          enumIndex,
-	}
-	return reflect.ValueOf(enum), nil
+	}), nil
 }
 
 func (reader sDatumReader) mapUnion(field Schema, reflectField reflect.Value, dec Decoder) (reflect.Value, error) {

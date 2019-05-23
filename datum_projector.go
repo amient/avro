@@ -324,11 +324,16 @@ func (p *enumProjector) Project(target reflect.Value, dec Decoder) error {
 	if v, err := p.Unwrap(dec); err != nil {
 		return err
 	} else if v != nil {
-		enum := &GenericEnum{Symbols: p.readerSymbols}
+		enum := GenericEnum{Symbols: p.readerSymbols}
 		if i, ok := v.(int32); ok {
 			enum.SetIndex(i)
 		}
-		target.Set(reflect.ValueOf(enum))
+		if target.Kind() == reflect.Ptr {
+			target.Set(reflect.ValueOf(&enum))
+		} else {
+			target.Set(reflect.ValueOf(enum))
+		}
+
 	}
 	return nil
 }
@@ -628,6 +633,7 @@ func (p *RecordProjector) Project(target reflect.Value, dec Decoder) error {
 	case GenericRecord:
 		record := target.Interface().(GenericRecord)
 		for f := range p.projectIndexMap {
+
 			if writerValue, err := p.projectIndexMap[f].Unwrap(dec); err != nil {
 				return err
 			} else if writerValue != nil {

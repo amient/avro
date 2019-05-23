@@ -1,6 +1,7 @@
 package avro
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -503,6 +504,12 @@ func TestSchemaConvertGeneric(t *testing.T) {
 	    ]
 	}`)
 
+	type Datum struct {
+		Dict map[string][]string
+		Select GenericEnum
+		Option *GenericEnum
+		Option2 *map[string]uint64
+	}
 
 	datum := map[string]interface{} {
 		"dict": map[interface{}]interface{} {
@@ -511,13 +518,61 @@ func TestSchemaConvertGeneric(t *testing.T) {
 		},
 		"option": "C",
 	}
-	if generic, err := schema.Generic(datum); err != nil {
+
+	generic, err := schema.Generic(datum)
+	if err != nil {
 		panic(err)
-	} else if rec, ok := generic.(*GenericRecord); !ok {
-		panic("not a record")
-	} else {
-		assert(t, rec.String(), `{"dict":{"A1":["abc","def"],"G1":["ghi","jkl"]},"option":"C","option2":null,"select":"B"}`)
 	}
+	rec, ok := generic.(*GenericRecord)
+	if !ok {
+		panic("not a record")
+	}
+	assert(t, rec.String(), `{"dict":{"A1":["abc","def"],"G1":["ghi","jkl"]},"option":"C","option2":null,"select":"B"}`)
+
+	var datum2 map[string]interface{}
+	if err := json.Unmarshal([]byte(rec.String()), &datum2); err != nil {
+		panic(err)
+	}
+	generic2, ok := generic.(*GenericRecord)
+	if !ok {
+		panic("not a record")
+	}
+	assert(t, generic, generic2)
+
+	buffer := new(bytes.Buffer)
+	if err := NewDatumWriter(schema).Write(generic2, NewBinaryEncoder(buffer)); err != nil {
+		panic(err)
+	}
+	bytes := buffer.Bytes()
+
+	specificDatum := new(Datum)
+	if err := NewDatumReader(schema).Read(specificDatum, NewBinaryDecoder(bytes)); err != nil {
+		panic(err)
+	}
+	assert(t, specificDatum.Dict, map[string][]string{
+		"A1": {"abc", "def"},
+		"G1": {"ghi", "jkl"},
+	})
+	assert(t, specificDatum.Option.Get(), "C")
+	assert(t, specificDatum.Option2 == nil, true)
+	assert(t, specificDatum.Select.Get(), "B")
+
+	projectedDatum := new(Datum)
+	projector, err := NewDatumProjector(schema, schema)
+	if err != nil {
+		panic(err)
+	}
+	if err := projector.Read(projectedDatum, NewBinaryDecoder(bytes)); err != nil {
+		panic(err)
+	}
+	assert(t, projectedDatum.Dict, map[string][]string{
+		"A1": {"abc", "def"},
+		"G1": {"ghi", "jkl"},
+	})
+	assert(t, projectedDatum.Option.Get(), "C")
+	assert(t, projectedDatum.Option2 == nil, true)
+	assert(t, projectedDatum.Select.Get(), "B")
+
 
 }
 
