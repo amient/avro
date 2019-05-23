@@ -83,7 +83,11 @@ func (enum *GenericEnum) UnmarshalJSON(data []byte) error {
 }
 
 func (enum GenericEnum) MarshalYAML() (interface{}, error) {
-	return enum.Symbols[enum.index], nil
+	if enum.index < 0 || enum.index > len(enum.Symbols) {
+		return nil, fmt.Errorf("invalid index %v for enum symbol set: %v", enum.index, enum.Symbols)
+	} else {
+		return enum.Symbols[enum.index], nil
+	}
 }
 
 func (enum *GenericEnum) UnmarshalYAML(unmarshal func(interface{}) error) error {
