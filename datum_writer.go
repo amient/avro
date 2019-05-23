@@ -259,7 +259,7 @@ func (writer *SpecificDatumWriter) writeEnum(v reflect.Value, enc Encoder, s Sch
 	if !s.Validate(v) {
 		return fmt.Errorf("Invalid enum value: %v", v.Interface())
 	}
-	enc.WriteInt(v.Interface().(GenericEnum).index)
+	enc.WriteInt(int32(dereference(v).Interface().(GenericEnum).index))
 
 	return nil
 }
@@ -523,7 +523,7 @@ func (writer *GenericDatumWriter) writeEnum(v interface{}, enc Encoder, s Schema
 	switch value := v.(type) {
 	case *GenericEnum:
 		{
-			if i, ok := value.symbolsToIndex[value.Get()]; ok {
+			if i, ok := value.symbolsToIndex[value.String()]; ok {
 				err := writer.writeInt(int32(i), enc)
 				if err != nil {
 					return err
@@ -532,7 +532,7 @@ func (writer *GenericDatumWriter) writeEnum(v interface{}, enc Encoder, s Schema
 		}
 	case GenericEnum:
 		{
-			if i, ok := value.symbolsToIndex[value.Get()]; ok {
+			if i, ok := value.symbolsToIndex[value.String()]; ok {
 				err := writer.writeInt(int32(i), enc)
 				if err != nil {
 					return err

@@ -40,7 +40,7 @@ func enumDec(schema *EnumSchema) preparedDecoder {
 		enum := &GenericEnum{
 			Symbols:        schema.Symbols,
 			symbolsToIndex: symbolsToIndex,
-			index:          enumIndex,
+			index:          int(enumIndex),
 		}
 		return reflect.ValueOf(enum), nil
 	}

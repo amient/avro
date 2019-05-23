@@ -1117,8 +1117,11 @@ func (s *EnumSchema) Prop(key string) (interface{}, bool) {
 
 // Validate checks whether the given value is writeable to this schema.
 func (s *EnumSchema) Validate(v reflect.Value) bool {
-	//TODO implement
-	return true
+	if _, ok := dereference(v).Interface().(GenericEnum); ok {
+		return true
+	} else {
+		return false
+	}
 }
 
 // Canonical representation
@@ -1144,7 +1147,8 @@ func (s *EnumSchema) MarshalJSON() ([]byte, error) {
 }
 
 func (s *EnumSchema) Value(symbol string) GenericEnum {
-	enum := NewGenericEnum(s.Symbols).Set(symbol)
+	enum := NewGenericEnum(s.Symbols)
+	enum.Set(symbol)
 	return *enum
 }
 

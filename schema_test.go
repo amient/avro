@@ -370,7 +370,7 @@ func TestSchemaEquality(t *testing.T) {
 	canonical, _ := s_enum1.Canonical()
 	c, _ := canonical.MarshalJSON()
 	//doc is stripped from canonical
-	assert(t, string(c),`{"name":"foo","type":"enum","symbols":["A","B","C","D"]}` )
+	assert(t, string(c), `{"name":"foo","type":"enum","symbols":["A","B","C","D"]}`)
 
 	schemas := []Schema{
 		s1, s2,
@@ -454,7 +454,7 @@ func TestBenchmark(t *testing.T) {
 	//assert that matching on fingerprint is no more than a few nanos
 	assert(t, result2.NsPerOp() < 100, true)
 	//assert that using fingerprints is 100s times faster then deep equal on the actual schema
-	assert(t, result1.NsPerOp() / result2.NsPerOp() > 100, true)
+	assert(t, result1.NsPerOp()/result2.NsPerOp() > 100, true)
 }
 
 func TestCanonicalConstituentOrdering(t *testing.T) {
@@ -493,13 +493,13 @@ func TestCanonicalConstituentOrdering(t *testing.T) {
 	s18 := MustParseSchema(Schema18)
 	s19 := MustParseSchema(Schema19)
 	s20 := MustParseSchema(Schema20)
-	f17,_ := s17.Fingerprint()
-	f18,_ := s18.Fingerprint()
+	f17, _ := s17.Fingerprint()
+	f18, _ := s18.Fingerprint()
 	assert(t, f17.Equal(f18), true) //nested record field order doesn't matter
-	f19,_ := s19.Fingerprint()
-	f20,_ := s20.Fingerprint()
+	f19, _ := s19.Fingerprint()
+	f20, _ := s20.Fingerprint()
 	assert(t, f18.Equal(f19), false) //union types order matters
-	assert(t, f19.Equal(f20), true) //record field order doesn't matter
+	assert(t, f19.Equal(f20), true)  //record field order doesn't matter
 
 }
 
@@ -535,17 +535,17 @@ func TestSchemaConvertGeneric(t *testing.T) {
 	}`)
 
 	type Datum struct {
-		Dict map[string][]string
-		Select GenericEnum
-		Option *GenericEnum
+		Dict    map[string][]string
+		Select  GenericEnum
+		Option  *GenericEnum
 		Option2 *map[string]uint64
 		Option3 *GenericEnum
 	}
 
-	datum := map[string]interface{} {
-		"dict": map[interface{}]interface{} {
-			"A1": []interface{} { "abc", "def" },
-			"G1": []interface{} { "ghi", "jkl" },
+	datum := map[string]interface{}{
+		"dict": map[interface{}]interface{}{
+			"A1": []interface{}{"abc", "def"},
+			"G1": []interface{}{"ghi", "jkl"},
 		},
 		"option": "C",
 	}
@@ -560,10 +560,20 @@ func TestSchemaConvertGeneric(t *testing.T) {
 	}
 	assert(t, rec.String(), `{"dict":{"A1":["abc","def"],"G1":["ghi","jkl"]},"option":"C","option2":null,"option3":"A","select":"B"}`)
 
-	var datum2 map[string]interface{}
+	datum2 := new(Datum)
 	if err := json.Unmarshal([]byte(rec.String()), &datum2); err != nil {
 		panic(err)
 	}
+	buffer2 := new(bytes.Buffer)
+	if err := NewDatumWriter(schema).Write(datum2, NewBinaryEncoder(buffer2)); err != nil {
+		panic(err)
+	}
+
+
+	assert(t, datum2.Option.String(), "C")
+	assert(t, datum2.Option2 == nil , true)
+	assert(t, datum2.Select.String(), "B")
+	assert(t, datum2.Option3.String(), "A")
 	generic2, ok := generic.(*GenericRecord)
 	if !ok {
 		panic("not a record")
@@ -584,9 +594,9 @@ func TestSchemaConvertGeneric(t *testing.T) {
 		"A1": {"abc", "def"},
 		"G1": {"ghi", "jkl"},
 	})
-	assert(t, specificDatum.Option.Get(), "C")
+	assert(t, specificDatum.Option.String(), "C")
 	assert(t, specificDatum.Option2 == nil, true)
-	assert(t, specificDatum.Select.Get(), "B")
+	assert(t, specificDatum.Select.String(), "B")
 
 	projectedDatum := new(Datum)
 	projector, err := NewDatumProjector(schema, schema)
@@ -600,10 +610,9 @@ func TestSchemaConvertGeneric(t *testing.T) {
 		"A1": {"abc", "def"},
 		"G1": {"ghi", "jkl"},
 	})
-	assert(t, projectedDatum.Option.Get(), "C")
+	assert(t, projectedDatum.Option.String(), "C")
 	assert(t, projectedDatum.Option2 == nil, true)
-	assert(t, projectedDatum.Select.Get(), "B")
-
+	assert(t, projectedDatum.Select.String(), "B")
 
 }
 

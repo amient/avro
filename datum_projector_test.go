@@ -243,7 +243,7 @@ func TestEmptyStructRefs(t *testing.T) {
 		if val3.Back != nil {
 			t.Fail()
 		}
-		if val3.Enum.Get() != "B" {
+		if val3.Enum.String() != "B" {
 			t.Fail()
 		}
 		if val3.OptionalEnum != nil {

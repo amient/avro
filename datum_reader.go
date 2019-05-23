@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 	"sync"
 )
 
@@ -30,13 +31,13 @@ type DatumReader interface {
 var enumSymbolsToIndexCache = make(map[string]map[string]int32)
 var enumSymbolsToIndexCacheLock sync.Mutex
 
-
 // GenericEnum is a generic Avro enum representation. This is still subject to change and may be rethought.
 type GenericEnum struct {
 	// Avro enum symbols.
 	Symbols        []string
 	symbolsToIndex map[string]int32
-	index          int32
+	index          int
+	unresolved     string
 }
 
 // NewGenericEnum returns a new GenericEnum that uses provided enum symbols.
@@ -53,41 +54,56 @@ func NewGenericEnum(symbols []string) *GenericEnum {
 }
 
 // GetIndex gets the numeric value for this enum.
-func (enum *GenericEnum) GetIndex() int32 {
+func (enum GenericEnum) GetIndex() int {
 	return enum.index
 }
 
-// Get gets the string value for this enum (e.g. symbol).
-func (enum *GenericEnum) Get() string {
-	return enum.Symbols[enum.index]
-}
-
 // SetIndex sets the numeric value for this enum.
-func (enum *GenericEnum) SetIndex(index int32) *GenericEnum {
-	enum.index = index
-	return enum
+func (enum *GenericEnum) SetIndex(index int32) {
+	enum.index = int(index)
 }
 
-func (enum *GenericEnum) String() string {
-	return enum.Symbols[enum.index]
+// Get gets the string value for this enum (e.g. symbol).
+func (enum GenericEnum) String() string {
+	if enum.index == -1 {
+		return enum.unresolved
+	} else {
+		return enum.Symbols[enum.index]
+	}
 }
 
 func (enum GenericEnum) MarshalJSON() ([]byte, error) {
 	return []byte(fmt.Sprintf(`"%v"`, enum.Symbols[enum.index])), nil
 }
 
+func (enum *GenericEnum) UnmarshalJSON(data []byte) error {
+	enum.index = -1
+	enum.unresolved = strings.Trim(string(data), `"`)
+	return nil
+}
+
 func (enum GenericEnum) MarshalYAML() (interface{}, error) {
 	return enum.Symbols[enum.index], nil
 }
 
+func (enum *GenericEnum) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	enum.index = -1
+	var symbol string
+	if err := unmarshal(&symbol); err != nil {
+		return err
+	}
+	enum.unresolved = strings.Trim(symbol, `"`)
+	return nil
+}
+
+
 // Set sets the string value for this enum (e.g. symbol).
 // Panics if the given symbol does not exist in this enum.
-func (enum *GenericEnum) Set(symbol string) *GenericEnum {
+func (enum *GenericEnum) Set(symbol string) {
 	if index, exists := enum.symbolsToIndex[symbol]; !exists {
 		panic("Unknown enum symbol")
 	} else {
-		enum.index = index
-		return enum
+		enum.index = int(index)
 	}
 }
 
@@ -369,7 +385,7 @@ func (reader sDatumReader) mapEnum(field Schema, dec Decoder) (reflect.Value, er
 	return reflect.ValueOf(GenericEnum{
 		Symbols:        schema.Symbols,
 		symbolsToIndex: symbolsToIndex,
-		index:          enumIndex,
+		index:          int(enumIndex),
 	}), nil
 }
 
@@ -504,15 +520,15 @@ func (reader *GenericDatumReader) findAndSet(record *GenericRecord, field *Schem
 
 	switch typedValue := value.(type) {
 	case *GenericEnum:
-		if typedValue.GetIndex() >= int32(len(typedValue.Symbols)) {
-			return errors.New(fmt.Sprintf("Enum index invalid! %v from: %v", typedValue.GetIndex(), typedValue.Symbols))
+		if typedValue.index >= len(typedValue.Symbols) {
+			return errors.New(fmt.Sprintf("Enum index invalid! %v from: %v", typedValue.index, typedValue.Symbols))
 		}
-		record.Set(field.Name, typedValue.Symbols[typedValue.GetIndex()])
+		record.Set(field.Name, typedValue.Symbols[typedValue.index])
 	case GenericEnum:
-		if typedValue.GetIndex() >= int32(len(typedValue.Symbols)) {
-			return errors.New(fmt.Sprintf("Enum index invalid! %v from: %v", typedValue.GetIndex(), typedValue.Symbols))
+		if typedValue.index >= len(typedValue.Symbols) {
+			return errors.New(fmt.Sprintf("Enum index invalid! %v from: %v", typedValue.index, typedValue.Symbols))
 		}
-		record.Set(field.Name, typedValue.Symbols[typedValue.GetIndex()])
+		record.Set(field.Name, typedValue.Symbols[typedValue.index])
 
 	default:
 		record.Set(field.Name, value)
@@ -613,7 +629,7 @@ func (reader *GenericDatumReader) mapEnum(field Schema, dec Decoder) (*GenericEn
 	enum := &GenericEnum{
 		Symbols:        schema.Symbols,
 		symbolsToIndex: symbolsToIndex,
-		index:          enumIndex,
+		index:          int(enumIndex),
 	}
 	return enum, nil
 }

@@ -134,8 +134,8 @@ func TestComplexBinding(t *testing.T) {
 				}
 			}
 
-			if c.EnumField.Get() != enumValues[2] {
-				t.Errorf("Invalid enum value: expected %v, actual %v", enumValues[2], c.EnumField.Get())
+			if c.EnumField.String() != enumValues[2] {
+				t.Errorf("Invalid enum value: expected %v, actual %v", enumValues[2], c.EnumField.String())
 			}
 
 			if len(c.MapOfInts) != arrayLength {
@@ -265,8 +265,8 @@ func TestComplexOfComplexBinding(t *testing.T) {
 				}
 			}
 
-			if c.NullOrRecordUnion.EnumRecordField.Get() != enumValues[3] {
-				t.Errorf("Invalid enum value: expected %v, actual %v", enumValues[3], c.NullOrRecordUnion.EnumRecordField.Get())
+			if c.NullOrRecordUnion.EnumRecordField.String() != enumValues[3] {
+				t.Errorf("Invalid enum value: expected %v, actual %v", enumValues[3], c.NullOrRecordUnion.EnumRecordField.String())
 			}
 		}
 	}
