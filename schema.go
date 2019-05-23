@@ -20,6 +20,15 @@ import (
 
 type Fingerprint [32]byte
 
+func (f *Fingerprint) Equal(other *Fingerprint) bool {
+	for i, b := range f {
+		if other[i] != b {
+			return false
+		}
+	}
+	return true
+}
+
 const (
 	// Record schema type constant
 	Record int = iota
@@ -1134,8 +1143,9 @@ func (s *EnumSchema) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func (s *EnumSchema) Value(symbol string) *GenericEnum {
-	return NewGenericEnum(s.Symbols).Set(symbol)
+func (s *EnumSchema) Value(symbol string) GenericEnum {
+	enum := NewGenericEnum(s.Symbols).Set(symbol)
+	return *enum
 }
 
 // ArraySchema implements Schema and represents Avro array type.
@@ -1494,35 +1504,11 @@ func (s *UnionSchema) Validate(v reflect.Value) bool {
 	return false
 }
 
-type UnionPair struct {
-	Index int
-	Type  Schema
-}
-
-type UnionPairs []UnionPair
-
-func (p UnionPairs) Len() int {
-	return len(p)
-}
-func (p UnionPairs) Less(a, b int) bool {
-	return p[a].Type.GetName() < p[b].Type.GetName()
-}
-func (p UnionPairs) Swap(i, j int) {
-	p[i], p[j] = p[j], p[i]
-}
-
 // Canonical representation
 func (s *UnionSchema) Canonical() (*CanonicalSchema, error) {
 	ct := make([]*CanonicalSchema, len(s.Types))
-
-	pairs := make(UnionPairs, len(s.Types))
-	for i, f := range s.Types {
-		pairs[i] = UnionPair{i, f}
-	}
-	sort.Sort(pairs)
-
-	for i, pair := range pairs {
-		if c, err := pair.Type.Canonical(); err != nil {
+	for i, t := range s.Types {
+		if c, err := t.Canonical(); err != nil {
 			return nil, err
 		} else {
 			ct[i] = c

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"testing"
 )
 
@@ -343,9 +344,6 @@ func TestSchemaEquality(t *testing.T) {
 		{"name": "field1", "type": "long", "aliases": ["f1"] },
 		{"name": "field2", "type": "string", "doc": "hello"}
 	]}`)
-	//s3, _ := ParseSchema(`{"type": "record", "name": "TestRecord", "hello": "world", "fields": [
-	//	{"name": "field1", "type": "long", "aliases": ["f1"] },{"name": "field2", "doc": "hello", "type": "string"}
-	//]}`)
 
 	s_enum1, _ := ParseSchema(`{"type":"enum", "name":"foo", "symbols":["A", "B", "C", "D"], "doc": "hello"}`)
 	s_enum2, _ := ParseSchema(`{"type":"enum", "name":"foo", "symbols":["D", "C", "B", "A"]}`)
@@ -374,7 +372,6 @@ func TestSchemaEquality(t *testing.T) {
 	//doc is stripped from canonical
 	assert(t, string(c),`{"name":"foo","type":"enum","symbols":["A","B","C","D"]}` )
 
-
 	schemas := []Schema{
 		s1, s2,
 		s_enum1, s_enum2,
@@ -396,47 +393,76 @@ func TestSchemaEquality(t *testing.T) {
 			f1, _ := schemas[i].Fingerprint()
 			f2, _ := schemas[y].Fingerprint()
 			if y == i {
-				assert(t, f1, f2)
-			} else if f1 == f2 {
-				panic(fmt.Errorf("different schemas have same fingerprint: %q and %q",
-					schemas[i].GetName(), schemas[y].GetName()))
+				assert(t, f1.Equal(f2), true)
+			} else if f1.Equal(f2) {
+				if !reflect.DeepEqual(schemas[i], schemas[y]) {
+					panic(fmt.Errorf("different schemas have same fingerprint: \n%q\n%q",
+						schemas[i], schemas[y]))
+				}
 			}
 		}
 	}
 
-	//assert(t, s1.Fingerprint(), newRecursiveSchema(s1.(*RecordSchema)).Fingerprint())
-	//assert(t, s2.Fingerprint(), newRecursiveSchema(s2.(*RecordSchema)).Fingerprint())
-	//assert(t, s3.Fingerprint(), newRecursiveSchema(s3.(*RecordSchema)).Fingerprint())
+	af1, _ := s1.Fingerprint()
+	af1_, _ := newRecursiveSchema(s1.(*RecordSchema)).Fingerprint()
+	assert(t, af1.Equal(af1_), true)
+	af2, _ := s2.Fingerprint()
+	af2_, _ := newRecursiveSchema(s2.(*RecordSchema)).Fingerprint()
+	assert(t, af2.Equal(af2_), true)
 
-	////benchmarks
-	//f1 := calculateSchemaFingerprint(s1)
-	//f2 := calculateSchemaFingerprint(s2)
-	//f3 := calculateSchemaFingerprint(s3)
-	//fmt.Println("reflet.DeepEqual Benchmark", testing.Benchmark(func(b *testing.B) {
-	//	for i := 0; i < b.N; i++ {
-	//		reflect.DeepEqual(s1, s2)
-	//		reflect.DeepEqual(s2, s3)
-	//	}
-	//}))
-	//fmt.Println("Fingerprint Comparsion Benchmark", testing.Benchmark(func(b *testing.B) {
-	//	for i := 0; i < b.N; i++ {
-	//		if f1 == f2 {
-	//			panic("1")
-	//		}
-	//		if f2 != f3 {
-	//			panic("2")
-	//		}
-	//	}
-	//}))
+}
 
+func TestBenchmark(t *testing.T) {
+	s1, _ := ParseSchema(`{"type": "record", "name": "TestRecord", "namespace": "xyz", "hello": "world", "fields": [
+		{"name": "field1", "type": "long"},
+		{"name": "field2", "type": "string", "doc": "hello"}
+	]}`)
+	s2, _ := ParseSchema(`{"type": "record", "name": "TestRecord", "hello": "world", "fields": [
+		{"name": "field1", "type": "long", "aliases": ["f1"] },
+		{"name": "field2", "type": "string", "doc": "hello"}
+	]}`)
+	s3, _ := ParseSchema(`{"type": "record", "name": "TestRecord", "hello": "world", "fields": [
+		{"name": "field1", "type": "long", "aliases": ["f1"] },{"name": "field2", "doc": "hello", "type": "string"}
+	]}`)
+
+	f1, _ := calculateSchemaFingerprint(s1)
+	f2, _ := calculateSchemaFingerprint(s2)
+	f3, _ := calculateSchemaFingerprint(s3)
+
+	result1 := testing.Benchmark(func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			if reflect.DeepEqual(s1, s2) {
+				panic("1")
+			}
+			if !reflect.DeepEqual(s2, s3) {
+				panic("2")
+			}
+		}
+	})
+
+	result2 := testing.Benchmark(func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			if f1.Equal(f2) {
+				panic("1")
+			}
+			if !f2.Equal(f3) {
+				panic(fmt.Errorf("2 \n%v\n%v\n", f2, f3))
+			}
+		}
+	})
+
+	//assert that matching on fingerprint is no more than a few nanos
+	assert(t, result2.NsPerOp() < 100, true)
+	//assert that using fingerprints is 100s times faster then deep equal on the actual schema
+	assert(t, result1.NsPerOp() / result2.NsPerOp() > 100, true)
 }
 
 func TestCanonicalConstituentOrdering(t *testing.T) {
 	var Schema17 = `{"type":"record","namespace":"domain","name":"Instr","fields":[
 	{"name": "zindex", "type": "int"},
 	{"name":"operation","type":[
-		{"type":"record","name":"REPLACE","fields":[{"name":"key","type":"string"},{"name": "data","type":"bytes"}]},
 		{"type":"record","name":"MODIFY","fields":[{"name":"key","type":"string"},{"name": "value","type":"string"}]},
+		{"type":"record","name":"REPLACE","fields":[{"name":"key","type":"string"},{"name": "data","type":"bytes"}]},
 		{"type":"record","name":"DELETE","fields":[{"name":"key","type":"string"},{"name": "cascading","type":"boolean"}]}
 	]}]}`
 	var Schema18 = `{"type":"record","namespace":"domain","name":"Instr","fields":[
@@ -456,9 +482,9 @@ func TestCanonicalConstituentOrdering(t *testing.T) {
 ]}`
 	var Schema20 = `{"type":"record","namespace":"domain","name":"Instr","fields":[
 	{"name":"operation","type":[
+		{"type":"record","name":"DELETE","fields":[{"name":"key","type":"string"},{"name": "cascading","type":"boolean"}]},
 		{"type":"record","name":"MODIFY","fields":[{"name":"key","type":"string"},{"name": "value","type":"string"}]},
-		{"type":"record","name":"REPLACE","fields":[{"name":"key","type":"string"},{"name": "data","type":"bytes"}]},
-		{"type":"record","name":"DELETE","fields":[{"name":"key","type":"string"},{"name": "cascading","type":"boolean"}]}
+		{"type":"record","name":"REPLACE","fields":[{"name":"key","type":"string"},{"name": "data","type":"bytes"}]}
 	]},
 	{"name": "zindex", "type": "int"}
 ]}`
@@ -469,11 +495,11 @@ func TestCanonicalConstituentOrdering(t *testing.T) {
 	s20 := MustParseSchema(Schema20)
 	f17,_ := s17.Fingerprint()
 	f18,_ := s18.Fingerprint()
+	assert(t, f17.Equal(f18), true) //nested record field order doesn't matter
 	f19,_ := s19.Fingerprint()
 	f20,_ := s20.Fingerprint()
-	assert(t, f17, f18)
-	assert(t, f18, f19)
-	assert(t, f19, f20)
+	assert(t, f18.Equal(f19), false) //union types order matters
+	assert(t, f19.Equal(f20), true) //record field order doesn't matter
 
 }
 
