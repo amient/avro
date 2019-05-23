@@ -311,6 +311,8 @@ type enumProjector struct {
 func(p *enumProjector) Unwrap(dec Decoder) (interface{}, error) {
 	if enumIndex, err := dec.ReadEnum(); err != nil {
 		return nil, err
+	} else if enumIndex < 0 || int(enumIndex) >= len(p.writerSymbols) {
+		return nil, fmt.Errorf("invalid index %v for enum symbol set: %v", enumIndex, p.writerSymbols)
 	} else {
 		writerSymbol := p.writerSymbols[enumIndex]
 		if readerSymbolIndex, ok := p.readerSymbolIndex[writerSymbol]; ok {
