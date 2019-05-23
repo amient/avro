@@ -340,6 +340,10 @@ func (*LongSchema) String() string {
 func (s *LongSchema) Generic(datum interface{}) (interface{}, error) {
 	if value, ok := datum.(int64); ok {
 		return int64(value), nil
+	} else if value, ok := datum.(float64); ok {
+		return int64(value), nil
+	} else if value, ok := datum.(float32); ok {
+		return int64(value), nil
 	} else if value, ok := datum.(int); ok {
 		return int64(value), nil
 	} else if value, ok := datum.(int32); ok {
@@ -1166,15 +1170,88 @@ func (s *ArraySchema) String() string {
 // Converts go runtime datum into a value acceptable by this schema
 func (s *ArraySchema) Generic(datum interface{}) (interface{}, error) {
 	if a, ok := datum.([]interface{}); ok {
-		slice := make([]interface{}, len(a))
-		for i, v := range a {
-			if val, err := s.Items.Generic(v); err != nil {
-				return nil, err
-			} else {
-				slice[i] = val
+		if s.Items.Type() == String {
+			slice := make([]string, len(a))
+			for i, v := range a {
+				if val, err := s.Items.Generic(v); err != nil {
+					return nil, err
+				} else {
+					slice[i] = val.(string)
+				}
 			}
+			return slice, nil
+		} else if s.Items.Type() == Double {
+			slice := make([]float64, len(a))
+			for i, v := range a {
+				if val, err := s.Items.Generic(v); err != nil {
+					return nil, err
+				} else {
+					slice[i] = val.(float64)
+				}
+			}
+			return slice, nil
+		} else if s.Items.Type() == Float {
+			slice := make([]float32, len(a))
+			for i, v := range a {
+				if val, err := s.Items.Generic(v); err != nil {
+					return nil, err
+				} else {
+					slice[i] = val.(float32)
+				}
+			}
+			return slice, nil
+		} else if s.Items.Type() == Long {
+			slice := make([]int64, len(a))
+			for i, v := range a {
+				if val, err := s.Items.Generic(v); err != nil {
+					return nil, err
+				} else {
+					slice[i] = val.(int64)
+				}
+			}
+			return slice, nil
+		} else if s.Items.Type() == Int {
+			slice := make([]int32, len(a))
+			for i, v := range a {
+				if val, err := s.Items.Generic(v); err != nil {
+					return nil, err
+				} else {
+					slice[i] = val.(int32)
+				}
+			}
+			return slice, nil
+		} else if s.Items.Type() == Boolean {
+			slice := make([]bool, len(a))
+			for i, v := range a {
+				if val, err := s.Items.Generic(v); err != nil {
+					return nil, err
+				} else {
+					slice[i] = val.(bool)
+				}
+			}
+			return slice, nil
+		} else if s.Items.Type() == Bytes || s.Items.Type() == Fixed {
+			slice := make([][]byte, len(a))
+			for i, v := range a {
+				if val, err := s.Items.Generic(v); err != nil {
+					return nil, err
+				} else {
+					slice[i] = val.([]byte)
+				}
+			}
+			return slice, nil
+		} else {
+			slice := make([]interface{}, len(a))
+			for i, v := range a {
+				if val, err := s.Items.Generic(v); err != nil {
+					return nil, err
+				} else {
+					slice[i] = val
+				}
+			}
+			return slice, nil
 		}
-		return slice, nil
+
 	} else {
 		return nil, fmt.Errorf("don't know how to convert datum to an array value: %v", datum)
 	}

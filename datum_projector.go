@@ -577,36 +577,12 @@ NextReaderField:
 	//prepare default values
 	for _, readerField := range readerRecordSchema.Fields {
 		if _, ok := p.defaultIndexMap[readerField.Name]; !ok {
-			//TODO converting default values to native is now a function of Schema in another branch
-
-			var defaultValue reflect.Value
-			switch readerField.Type.Type() {
-			case Array:
-				a := readerField.Default.([]interface{})
-				if len(a) > 0 {
-					switch readerField.Type.(*ArraySchema).Items.Type() {
-					case Long:
-						defaultValue = reflect.MakeSlice(reflect.SliceOf(reflect.TypeOf(int64(0))), len(a), len(a))
-						switch reflect.TypeOf(a[0]).Kind() {
-						case reflect.Float64:
-							for i, x := range a {
-								defaultValue.Index(i).Set(reflect.ValueOf(int64(x.(float64))))
-							}
-						default:
-							return nil, fmt.Errorf("TODO default converter from %q", reflect.TypeOf(a[0]))
-						}
-					default:
-						return nil, fmt.Errorf("TODO default converter to %q", readerField.Type.(*ArraySchema).Items)
-					}
-
-				}
-			default:
-				defaultValue = reflect.ValueOf(readerField.Default)
+			genericDefaultValue, err := readerField.Type.Generic(readerField.Default)
+			if err != nil {
+				return nil, err
 			}
-			p.defaultIndexMap[readerField.Name] = defaultValue
-			if defaultValue.IsValid() {
-				p.defaultUnwrapperMap[readerField.Name] = defaultValue.Interface()
-			}
+			p.defaultUnwrapperMap[readerField.Name] = genericDefaultValue
+			p.defaultIndexMap[readerField.Name] = reflect.ValueOf(genericDefaultValue)
 		} else {
 			delete(p.defaultIndexMap, readerField.Name)
 		}
