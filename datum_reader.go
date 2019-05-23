@@ -76,7 +76,7 @@ func (enum *GenericEnum) MarshalJSON() ([]byte, error) {
 	return []byte(fmt.Sprintf(`"%v"`, enum.Symbols[enum.index])), nil
 }
 
-func (enum *GenericEnum) MarshalYAML() ([]byte, error) {
+func (enum *GenericEnum) MarshalYAML() (interface{}, error) {
 	return []byte(fmt.Sprintf(`"%v"`, enum.Symbols[enum.index])), nil
 }
 
