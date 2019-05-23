@@ -77,13 +77,20 @@ func (enum GenericEnum) MarshalJSON() ([]byte, error) {
 }
 
 func (enum *GenericEnum) UnmarshalJSON(data []byte) error {
-	enum.index = -1
-	enum.unresolved = strings.Trim(string(data), `"`)
+	symbol := strings.Trim(string(data), `"`)
+	if i, ok := enum.symbolsToIndex[symbol]; ok {
+		enum.index = int(i)
+	} else {
+		enum.unresolved = symbol
+		enum.index = -1
+	}
 	return nil
 }
 
 func (enum GenericEnum) MarshalYAML() (interface{}, error) {
-	if enum.index < 0 || enum.index > len(enum.Symbols) {
+	if enum.index == -1 {
+		return enum.unresolved, nil
+	} else if enum.index < 0 || enum.index > len(enum.Symbols) {
 		return nil, fmt.Errorf("invalid index %v for enum symbol set: %v", enum.index, enum.Symbols)
 	} else {
 		return enum.Symbols[enum.index], nil
@@ -91,12 +98,17 @@ func (enum GenericEnum) MarshalYAML() (interface{}, error) {
 }
 
 func (enum *GenericEnum) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	enum.index = -1
 	var symbol string
 	if err := unmarshal(&symbol); err != nil {
 		return err
 	}
-	enum.unresolved = strings.Trim(symbol, `"`)
+
+	if i, ok := enum.symbolsToIndex[symbol]; ok{
+		enum.index = int(i)
+	} else {
+		enum.index = -1
+		enum.unresolved = symbol
+	}
 	return nil
 }
 
