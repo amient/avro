@@ -205,7 +205,7 @@ func TestEmptyStructRefs(t *testing.T) {
 	type Position struct {
 		Front *struct {Info string}
 		Back *struct {Title string}
-		Enum *GenericEnum
+		Enum GenericEnum
 		OptionalEnum *GenericEnum
 	}
 

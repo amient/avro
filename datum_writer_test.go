@@ -399,7 +399,7 @@ func BenchmarkSpecificDatumWriter(b *testing.B) {
 type _complex struct {
 	StringArray []string
 	LongArray   []int64
-	EnumField   *GenericEnum
+	EnumField   GenericEnum
 	MapOfInts   map[string]int32
 	UnionField  interface{}
 	FixedField  []byte
@@ -407,11 +407,13 @@ type _complex struct {
 	MapOfRecord map[string]*_testRecord
 }
 
+var _complexEnum = &EnumSchema{Name: "complexEnum", Symbols: []string{"A", "B", "C", "D"}}
+
 func newComplex() *_complex {
 	return &_complex{
 		StringArray: make([]string, 0),
 		LongArray:   make([]int64, 0),
-		EnumField:   NewGenericEnum([]string{"A", "B", "C", "D"}),
+		EnumField:   _complexEnum.Value("A"),
 		MapOfInts:   make(map[string]int32),
 		RecordField: newTestRecord(),
 		MapOfRecord: make(map[string]*_testRecord),

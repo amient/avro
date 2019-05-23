@@ -259,8 +259,7 @@ func (writer *SpecificDatumWriter) writeEnum(v reflect.Value, enc Encoder, s Sch
 	if !s.Validate(v) {
 		return fmt.Errorf("Invalid enum value: %v", v.Interface())
 	}
-
-	enc.WriteInt(v.Interface().(*GenericEnum).GetIndex())
+	enc.WriteInt(v.Interface().(GenericEnum).index)
 
 	return nil
 }
@@ -531,12 +530,21 @@ func (writer *GenericDatumWriter) writeEnum(v interface{}, enc Encoder, s Schema
 				}
 			}
 		}
+	case GenericEnum:
+		{
+			if i, ok := value.symbolsToIndex[value.Get()]; ok {
+				err := writer.writeInt(int32(i), enc)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
 	case string:
 		{
 			rs := s.(*EnumSchema)
 			for i := range rs.Symbols {
 				if v.(string) == rs.Symbols[i] {
-					fmt.Println("Writing from string", int32(i))
 					enc.WriteInt(int32(i))
 					break
 				}
@@ -588,7 +596,9 @@ func (writer *GenericDatumWriter) isWritableAs(v interface{}, s Schema) bool {
 	case *MapSchema:
 		return reflect.ValueOf(v).Kind() == reflect.Map
 	case *EnumSchema:
-		_, ok = v.(*GenericEnum)
+		_, ok1 := v.(*GenericEnum)
+		_, ok2 := v.(GenericEnum)
+		ok = ok1 || ok2
 	case *UnionSchema:
 		panic("Nested unions not supported") //this is a part of spec: http://avro.apache.org/docs/current/spec.html#binary_encode_complex
 	case *RecordSchema:

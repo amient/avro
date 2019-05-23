@@ -67,7 +67,7 @@ func TestPrimitiveBinding(t *testing.T) {
 type Complex struct {
 	StringArray []string
 	LongArray   []int64
-	EnumField   *GenericEnum
+	EnumField   GenericEnum
 	MapOfInts   map[string]int32
 	UnionField  string
 	FixedField  []byte
@@ -178,7 +178,7 @@ type testRecord2 struct {
 
 type testRecord3 struct {
 	StringArray     []string
-	EnumRecordField *GenericEnum
+	EnumRecordField GenericEnum
 }
 
 func TestComplexOfComplexBinding(t *testing.T) {

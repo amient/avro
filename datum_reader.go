@@ -508,6 +508,11 @@ func (reader *GenericDatumReader) findAndSet(record *GenericRecord, field *Schem
 			return errors.New(fmt.Sprintf("Enum index invalid! %v from: %v", typedValue.GetIndex(), typedValue.Symbols))
 		}
 		record.Set(field.Name, typedValue.Symbols[typedValue.GetIndex()])
+	case GenericEnum:
+		if typedValue.GetIndex() >= int32(len(typedValue.Symbols)) {
+			return errors.New(fmt.Sprintf("Enum index invalid! %v from: %v", typedValue.GetIndex(), typedValue.Symbols))
+		}
+		record.Set(field.Name, typedValue.Symbols[typedValue.GetIndex()])
 
 	default:
 		record.Set(field.Name, value)
