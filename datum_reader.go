@@ -77,7 +77,7 @@ func (enum *GenericEnum) MarshalJSON() ([]byte, error) {
 }
 
 func (enum *GenericEnum) MarshalYAML() (interface{}, error) {
-	return fmt.Sprintf(`"%v"`, enum.Symbols[enum.index]), nil
+	return enum.Symbols[enum.index], nil
 }
 
 // Set sets the string value for this enum (e.g. symbol).
