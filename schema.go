@@ -1093,20 +1093,20 @@ func (s *EnumSchema) Generic(datum interface{}) (interface{}, error) {
 	}
 }
 
-var symbolsToIndexCache = make(map[string]map[string]int32)
+var symbolsToIndexCache = make(map[[32]byte]map[string]int32)
 var symbolsToIndexCacheLock sync.Mutex
 
 // Type returns a type constant for this EnumSchema.
 func (s *EnumSchema) IndexOf(symbol string) int32 {
 	if s.symbolsToIndex == nil {
-		fullName := GetFullName(s)
+		f, _ := s.Fingerprint()
 		symbolsToIndexCacheLock.Lock()
-		if s.symbolsToIndex = symbolsToIndexCache[fullName]; s.symbolsToIndex == nil {
+		if s.symbolsToIndex = symbolsToIndexCache[*f]; s.symbolsToIndex == nil {
 			s.symbolsToIndex = make(map[string]int32)
 			for i, symbol := range s.Symbols {
 				s.symbolsToIndex[symbol] = int32(i)
 			}
-			symbolsToIndexCache[fullName] = s.symbolsToIndex
+			symbolsToIndexCache[*f] = s.symbolsToIndex
 		}
 		symbolsToIndexCacheLock.Unlock()
 	}
