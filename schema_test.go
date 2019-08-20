@@ -646,16 +646,30 @@ func TestCorrectParsingOfSchema(t *testing.T) {
   }, {
     "name" : "E",
     "type" : [ "null", "Status" ]
-  } ]
+  }, {
+    "name" : "F",
+    "type" : {
+      "type" : "record",
+	  "name": "F",
+      "fields" : [ 
+        {
+            "name": "X",
+            "type": "Status"
+        }
+      ]
+    }
+  }
+ ]
 }`
-	expect := `{"type":"record","namespace":"io.avro","name":"Referenced","fields":[{"name":"A","type":{"type":"enum","name":"Status","symbols":["OK","FAILED"]}},{"name":"B","type":"Status"},{"name":"C","type":{"type":"map","values":"Status"}},{"name":"D","type":{"type":"array","items":"Status"}},{"name":"E","type":["null","Status"]}]}`
+	expectJson := `{"type":"record","namespace":"io.avro","name":"Referenced","fields":[{"name":"A","type":{"type":"enum","name":"Status","symbols":["OK","FAILED"]}},{"name":"B","type":"Status"},{"name":"C","type":{"type":"map","values":"Status"}},{"name":"D","type":{"type":"array","items":"Status"}},{"name":"E","type":["null","Status"]},{"name":"F","type":{"type":"record","name":"F","fields":[{"name":"X","type":"Status"}]}}]}`
 	if schema, err := ParseSchema(jsonSchema); err != nil {
 		panic(err)
 	} else if json, err := json.Marshal(schema); err != nil {
 		panic(err)
 	} else {
-		assert(t, string(json), expect)
+		assert(t, string(json), expectJson)
 	}
+
 }
 
 func arrayEqual(arr1 []string, arr2 []string) bool {

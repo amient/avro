@@ -567,6 +567,7 @@ func (s *DoubleSchema) Generic(datum interface{}) (interface{}, error) {
 		return nil, fmt.Errorf("don't know how to convert datum to a double value: %v", datum)
 	}
 }
+
 // Type returns a type constant for this DoubleSchema.
 func (*DoubleSchema) Type() int {
 	return Double
@@ -771,7 +772,20 @@ type RecordSchema struct {
 
 // Returns representation considering whether the same type was already declared
 func (s *RecordSchema) withRegistry(registry map[string]Schema) Schema {
-	return schemaWithRegistry(s, registry)
+	//turn all repeated type declaration into references
+	fields := make([]*SchemaField, len(s.Fields))
+	for i, f := range s.Fields {
+		fields[i] = f.withRegistry(registry)
+	}
+	return &RecordSchema{
+		Name:        s.Name,
+		Namespace:   s.Namespace,
+		Doc:         s.Doc,
+		Aliases:     s.Aliases,
+		Properties:  s.Properties,
+		Fields:      fields,
+		fingerprint: s.fingerprint,
+	}
 }
 
 // Returns a pre-computed or cached fingerprint
@@ -917,7 +931,6 @@ func (s *RecordSchema) Generic(datum interface{}) (interface{}, error) {
 		return rec, nil
 	}
 
-
 	if datum == nil {
 		return nil, nil
 	} else {
@@ -1048,12 +1061,12 @@ type SchemaField struct {
 // Returns representation considering whether the same type was already declared
 func (s *SchemaField) withRegistry(registry map[string]Schema) *SchemaField {
 	return &SchemaField{
-		Name: s.Name,
-		Aliases: s.Aliases,
-		Default: s.Default,
-		Doc: s.Doc,
+		Name:       s.Name,
+		Aliases:    s.Aliases,
+		Default:    s.Default,
+		Doc:        s.Doc,
 		Properties: s.Properties,
-		Type: s.Type.withRegistry(registry),
+		Type:       s.Type.withRegistry(registry),
 	}
 }
 
@@ -1107,14 +1120,14 @@ func (s *SchemaField) String() string {
 
 // EnumSchema implements Schema and represents Avro enum type.
 type EnumSchema struct {
-	Name        string
-	Namespace   string
-	Aliases     []string
-	Doc         string
-	Symbols     []string
-	Properties  map[string]interface{}
+	Name           string
+	Namespace      string
+	Aliases        []string
+	Doc            string
+	Symbols        []string
+	Properties     map[string]interface{}
 	symbolsToIndex map[string]int32
-	fingerprint *Fingerprint
+	fingerprint    *Fingerprint
 }
 
 // Returns representation considering whether the same type was already declared
@@ -1146,7 +1159,7 @@ func (s *EnumSchema) String() string {
 
 // Converts go runtime datum into a value acceptable by this schema
 func (s *EnumSchema) Generic(datum interface{}) (interface{}, error) {
-	contains := func(symbol string ) bool {
+	contains := func(symbol string) bool {
 		for _, _symbol := range s.Symbols {
 			if _symbol == symbol {
 				return true
@@ -1262,9 +1275,9 @@ type ArraySchema struct {
 
 // Returns representation considering whether the same type was already declared
 func (s *ArraySchema) withRegistry(registry map[string]Schema) Schema {
-	return &ArraySchema {
-		Items: schemaWithRegistry(s.Items, registry),
-		Properties: s.Properties,
+	return &ArraySchema{
+		Items:       schemaWithRegistry(s.Items, registry),
+		Properties:  s.Properties,
 		fingerprint: s.fingerprint,
 	}
 }
@@ -1443,9 +1456,9 @@ type MapSchema struct {
 
 // Returns representation considering whether the same type was already declared
 func (s *MapSchema) withRegistry(registry map[string]Schema) Schema {
-	return &MapSchema {
-		Values: schemaWithRegistry(s.Values, registry),
-		Properties: s.Properties,
+	return &MapSchema{
+		Values:      schemaWithRegistry(s.Values, registry),
+		Properties:  s.Properties,
 		fingerprint: s.fingerprint,
 	}
 }
@@ -1565,11 +1578,11 @@ type UnionSchema struct {
 // Returns representation considering whether the same type was already declared
 func (s *UnionSchema) withRegistry(registry map[string]Schema) Schema {
 	types := make([]Schema, len(s.Types))
-	for i,t := range s.Types {
+	for i, t := range s.Types {
 		types[i] = t.withRegistry(registry)
 	}
-	return &UnionSchema {
-		Types: types,
+	return &UnionSchema{
+		Types:       types,
 		fingerprint: s.fingerprint,
 	}
 }
@@ -1595,7 +1608,6 @@ func (s *UnionSchema) String() string {
 
 	return fmt.Sprintf(`{"type": %s}`, string(bytes))
 }
-
 
 // Converts go runtime datum into a value acceptable by this schema
 func (s *UnionSchema) Generic(datum interface{}) (interface{}, error) {
@@ -1704,7 +1716,6 @@ func (s *FixedSchema) String() string {
 
 	return string(bytes)
 }
-
 
 // Converts go runtime datum into a value acceptable by this schema
 func (s *FixedSchema) Generic(datum interface{}) (interface{}, error) {
@@ -2052,7 +2063,7 @@ func schemaWithRegistry(schema Schema, regsitry map[string]Schema) Schema {
 
 type refSchema struct {
 	Type_ string
-	Ref Schema
+	Ref   Schema
 }
 
 // Returns representation considering whether the same type was already declared
