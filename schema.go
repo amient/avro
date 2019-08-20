@@ -1288,17 +1288,10 @@ type ArraySchema struct {
 
 // Returns representation considering whether the same type was already declared
 func (s *ArraySchema) withRegistry(registry map[string]Schema) Schema {
-	fullname := GetFullName(s)
-	if schema, ok := registry[fullname]; ok {
-		return &refSchema{Type_: fullname, Ref: schema}
-	} else {
-		schema = &ArraySchema{
-			Items:       s.Items.withRegistry(registry),
-			Properties:  s.Properties,
-			fingerprint: s.fingerprint,
-		}
-		registry[fullname] = schema
-		return schema
+	return &ArraySchema{
+		Items:       s.Items.withRegistry(registry),
+		Properties:  s.Properties,
+		fingerprint: s.fingerprint,
 	}
 }
 
@@ -1476,17 +1469,10 @@ type MapSchema struct {
 
 // Returns representation considering whether the same type was already declared
 func (s *MapSchema) withRegistry(registry map[string]Schema) Schema {
-	fullname := GetFullName(s)
-	if schema, ok := registry[fullname]; ok {
-		return &refSchema{Type_: fullname, Ref: schema}
-	} else {
-		schema = &MapSchema{
-			Values:      s.Values.withRegistry(registry),
-			Properties:  s.Properties,
-			fingerprint: s.fingerprint,
-		}
-		registry[fullname] = schema
-		return schema
+	return &MapSchema{
+		Values:      s.Values.withRegistry(registry),
+		Properties:  s.Properties,
+		fingerprint: s.fingerprint,
 	}
 }
 
@@ -1604,20 +1590,13 @@ type UnionSchema struct {
 
 // Returns representation considering whether the same type was already declared
 func (s *UnionSchema) withRegistry(registry map[string]Schema) Schema {
-	fullname := GetFullName(s)
-	if schema, ok := registry[fullname]; ok {
-		return &refSchema{Type_: fullname, Ref: schema}
-	} else {
-		types := make([]Schema, len(s.Types))
-		for i, t := range s.Types {
-			types[i] = t.withRegistry(registry)
-		}
-		schema = &UnionSchema{
-			Types:       types,
-			fingerprint: s.fingerprint,
-		}
-		registry[fullname] = schema
-		return schema
+	types := make([]Schema, len(s.Types))
+	for i, t := range s.Types {
+		types[i] = t.withRegistry(registry)
+	}
+	return &UnionSchema{
+		Types:       types,
+		fingerprint: s.fingerprint,
 	}
 }
 
