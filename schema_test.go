@@ -659,14 +659,35 @@ func TestCorrectParsingOfSchema(t *testing.T) {
       ]
     }
   }
+	,
+  {
+    "name" : "G",
+    "type" : {
+      "type": "map",
+	  "values": {
+		"type" : "record",
+	    "name": "F",
+        "fields" : [ 
+			{
+				"name": "X",
+				"type": "Status"
+			}
+        ]
+      }
+    }
+  }
+
+
  ]
 }`
-	expectJson := `{"type":"record","namespace":"io.avro","name":"Referenced","fields":[{"name":"A","type":{"type":"enum","name":"Status","symbols":["OK","FAILED"]}},{"name":"B","type":"Status"},{"name":"C","type":{"type":"map","values":"Status"}},{"name":"D","type":{"type":"array","items":"Status"}},{"name":"E","type":["null","Status"]},{"name":"F","type":{"type":"record","name":"F","fields":[{"name":"X","type":"Status"}]}}]}`
+	expectJson := `{"type":"record","namespace":"io.avro","name":"Referenced","fields":[{"name":"A","type":{"type":"enum","name":"Status","symbols":["OK","FAILED"]}},{"name":"B","type":"Status"},{"name":"C","type":{"type":"map","values":"Status"}},{"name":"D","type":{"type":"array","items":"Status"}},{"name":"E","type":["null","Status"]},{"name":"F","type":{"type":"record","name":"F","fields":[{"name":"X","type":"Status"}]}},{"name":"G","type":{"type":"map","values":{"type":"record","name":"F","fields":[{"name":"X","type":"Status"}]}}}]}`
 	if schema, err := ParseSchema(jsonSchema); err != nil {
 		panic(err)
 	} else if json, err := json.Marshal(schema); err != nil {
 		panic(err)
 	} else {
+		println(string(json))
+		println(expectJson)
 		assert(t, string(json), expectJson)
 	}
 

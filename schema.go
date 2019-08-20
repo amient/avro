@@ -772,19 +772,26 @@ type RecordSchema struct {
 
 // Returns representation considering whether the same type was already declared
 func (s *RecordSchema) withRegistry(registry map[string]Schema) Schema {
-	//turn all repeated type declaration into references
-	fields := make([]*SchemaField, len(s.Fields))
-	for i, f := range s.Fields {
-		fields[i] = f.withRegistry(registry)
-	}
-	return &RecordSchema{
-		Name:        s.Name,
-		Namespace:   s.Namespace,
-		Doc:         s.Doc,
-		Aliases:     s.Aliases,
-		Properties:  s.Properties,
-		Fields:      fields,
-		fingerprint: s.fingerprint,
+	fullname := GetFullName(s)
+	if schema, ok := registry[fullname]; ok {
+		return &refSchema{Type_: fullname, Ref: schema}
+	} else {
+		//turn all repeated type declaration into references
+		fields := make([]*SchemaField, len(s.Fields))
+		for i, f := range s.Fields {
+			fields[i] = f.withRegistry(registry)
+		}
+		schema = &RecordSchema{
+			Name:        s.Name,
+			Namespace:   s.Namespace,
+			Doc:         s.Doc,
+			Aliases:     s.Aliases,
+			Properties:  s.Properties,
+			Fields:      fields,
+			fingerprint: s.fingerprint,
+		}
+		registry[fullname] = schema
+		return schema
 	}
 }
 
@@ -1132,7 +1139,13 @@ type EnumSchema struct {
 
 // Returns representation considering whether the same type was already declared
 func (s *EnumSchema) withRegistry(registry map[string]Schema) Schema {
-	return schemaWithRegistry(s, registry)
+	fullname := GetFullName(s)
+	if schema, ok := registry[fullname]; ok {
+		return &refSchema{Type_: fullname, Ref: schema}
+	} else {
+		registry[fullname] = s
+		return s
+	}
 }
 
 // Returns a pre-computed or cached fingerprint
@@ -1275,10 +1288,17 @@ type ArraySchema struct {
 
 // Returns representation considering whether the same type was already declared
 func (s *ArraySchema) withRegistry(registry map[string]Schema) Schema {
-	return &ArraySchema{
-		Items:       schemaWithRegistry(s.Items, registry),
-		Properties:  s.Properties,
-		fingerprint: s.fingerprint,
+	fullname := GetFullName(s)
+	if schema, ok := registry[fullname]; ok {
+		return &refSchema{Type_: fullname, Ref: schema}
+	} else {
+		schema = &ArraySchema{
+			Items:       s.Items.withRegistry(registry),
+			Properties:  s.Properties,
+			fingerprint: s.fingerprint,
+		}
+		registry[fullname] = schema
+		return schema
 	}
 }
 
@@ -1456,10 +1476,17 @@ type MapSchema struct {
 
 // Returns representation considering whether the same type was already declared
 func (s *MapSchema) withRegistry(registry map[string]Schema) Schema {
-	return &MapSchema{
-		Values:      schemaWithRegistry(s.Values, registry),
-		Properties:  s.Properties,
-		fingerprint: s.fingerprint,
+	fullname := GetFullName(s)
+	if schema, ok := registry[fullname]; ok {
+		return &refSchema{Type_: fullname, Ref: schema}
+	} else {
+		schema = &MapSchema{
+			Values:      s.Values.withRegistry(registry),
+			Properties:  s.Properties,
+			fingerprint: s.fingerprint,
+		}
+		registry[fullname] = schema
+		return schema
 	}
 }
 
@@ -1565,7 +1592,7 @@ func (s *MapSchema) MarshalJSONWithRegistry(registry map[string]Schema) ([]byte,
 		Values Schema `json:"values,omitempty"`
 	}{
 		Type:   "map",
-		Values: schemaWithRegistry(s.Values, registry),
+		Values: s.Values.withRegistry(registry),
 	})
 }
 
@@ -1577,13 +1604,20 @@ type UnionSchema struct {
 
 // Returns representation considering whether the same type was already declared
 func (s *UnionSchema) withRegistry(registry map[string]Schema) Schema {
-	types := make([]Schema, len(s.Types))
-	for i, t := range s.Types {
-		types[i] = t.withRegistry(registry)
-	}
-	return &UnionSchema{
-		Types:       types,
-		fingerprint: s.fingerprint,
+	fullname := GetFullName(s)
+	if schema, ok := registry[fullname]; ok {
+		return &refSchema{Type_: fullname, Ref: schema}
+	} else {
+		types := make([]Schema, len(s.Types))
+		for i, t := range s.Types {
+			types[i] = t.withRegistry(registry)
+		}
+		schema = &UnionSchema{
+			Types:       types,
+			fingerprint: s.fingerprint,
+		}
+		registry[fullname] = schema
+		return schema
 	}
 }
 
@@ -1692,7 +1726,13 @@ type FixedSchema struct {
 
 // Returns representation considering whether the same type was already declared
 func (s *FixedSchema) withRegistry(registry map[string]Schema) Schema {
-	return s
+	fullname := GetFullName(s)
+	if schema, ok := registry[fullname]; ok {
+		return &refSchema{Type_: fullname, Ref: schema}
+	} else {
+		registry[fullname] = s
+		return s
+	}
 }
 
 // Returns a pre-computed or cached fingerprint
@@ -2049,16 +2089,6 @@ func getFullName(name string, namespace string) string {
 	}
 
 	return name
-}
-
-func schemaWithRegistry(schema Schema, regsitry map[string]Schema) Schema {
-	fullname := GetFullName(schema)
-	if _, ok := regsitry[fullname]; !ok {
-		regsitry[fullname] = schema
-		return schema
-	} else {
-		return &refSchema{Type_: fullname, Ref: schema}
-	}
 }
 
 type refSchema struct {
