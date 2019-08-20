@@ -1089,7 +1089,7 @@ func (s *SchemaField) Prop(key string) (interface{}, bool) {
 
 // MarshalJSON serializes the given schema field as JSON.
 func (s *SchemaField) MarshalJSON() ([]byte, error) {
-	if s.Type.Type() == Null {
+	if s.Type.Type() == Null || (s.Type.Type() == Union && s.Type.(*UnionSchema).Types[0].Type() == Null) {
 		return json.Marshal(struct {
 			Name    string      `json:"name,omitempty"`
 			Doc     string      `json:"doc,omitempty"`
