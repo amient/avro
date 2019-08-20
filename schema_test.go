@@ -616,6 +616,48 @@ func TestSchemaConvertGeneric(t *testing.T) {
 
 }
 
+func TestCorrectParsingOfSchema(t *testing.T) {
+	jsonSchema := `{
+  "type" : "record",
+  "name" : "Referenced",
+  "namespace" : "io.avro",
+  "fields" : [ {
+    "name" : "A",
+    "type" : {
+      "type" : "enum",
+      "name" : "Status",
+      "symbols" : [ "OK", "FAILED" ]
+    }
+  }, {
+    "name" : "B",
+    "type" : "Status"
+  }, {
+    "name" : "C",
+    "type" : {
+      "type" : "map",
+      "values" : "Status"
+    }
+  }, {
+    "name" : "D",
+    "type" : {
+      "type" : "array",
+      "items" : "Status"
+    }
+  }, {
+    "name" : "E",
+    "type" : [ "null", "Status" ]
+  } ]
+}`
+	expect := `{"type":"record","namespace":"io.avro","name":"Referenced","fields":[{"name":"A","type":{"type":"enum","name":"Status","symbols":["OK","FAILED"]}},{"name":"B","type":"Status"},{"name":"C","type":{"type":"map","values":"Status"}},{"name":"D","type":{"type":"array","items":"Status"}},{"name":"E","type":["null","Status"]}]}`
+	if schema, err := ParseSchema(jsonSchema); err != nil {
+		panic(err)
+	} else if json, err := json.Marshal(schema); err != nil {
+		panic(err)
+	} else {
+		assert(t, string(json), expect)
+	}
+}
+
 func arrayEqual(arr1 []string, arr2 []string) bool {
 	if len(arr1) != len(arr2) {
 		return false

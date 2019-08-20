@@ -134,10 +134,18 @@ type Schema interface {
 
 	// Returns a pre-computed or cached fingerprint
 	Fingerprint() (*Fingerprint, error)
+
+	// Returns representation considering whether the same type was already declared
+	withRegistry(registry map[string]Schema) Schema
 }
 
 // StringSchema implements Schema and represents Avro string type.
 type StringSchema struct{}
+
+// Returns representation considering whether the same type was already declared
+func (s *StringSchema) withRegistry(registry map[string]Schema) Schema {
+	return s
+}
 
 // Returns a pre-computed or cached fingerprint
 func (*StringSchema) Fingerprint() (*Fingerprint, error) {
@@ -205,6 +213,11 @@ func (*BytesSchema) Fingerprint() (*Fingerprint, error) {
 	}, nil
 }
 
+// Returns representation considering whether the same type was already declared
+func (s *BytesSchema) withRegistry(registry map[string]Schema) Schema {
+	return s
+}
+
 // String returns a JSON representation of BytesSchema.
 func (*BytesSchema) String() string {
 	return `{"type": "bytes"}`
@@ -257,6 +270,11 @@ func (*BytesSchema) MarshalJSON() ([]byte, error) {
 
 // IntSchema implements Schema and represents Avro int type.
 type IntSchema struct{}
+
+// Returns representation considering whether the same type was already declared
+func (s *IntSchema) withRegistry(registry map[string]Schema) Schema {
+	return s
+}
 
 // Returns a pre-computed or cached fingerprint
 func (*IntSchema) Fingerprint() (*Fingerprint, error) {
@@ -332,6 +350,11 @@ func (*IntSchema) MarshalJSON() ([]byte, error) {
 
 // LongSchema implements Schema and represents Avro long type.
 type LongSchema struct{}
+
+// Returns representation considering whether the same type was already declared
+func (s *LongSchema) withRegistry(registry map[string]Schema) Schema {
+	return s
+}
 
 // Returns a pre-computed or cached fingerprint
 func (*LongSchema) Fingerprint() (*Fingerprint, error) {
@@ -416,6 +439,11 @@ func (*LongSchema) MarshalJSON() ([]byte, error) {
 // FloatSchema implements Schema and represents Avro float type.
 type FloatSchema struct{}
 
+// Returns representation considering whether the same type was already declared
+func (s *FloatSchema) withRegistry(registry map[string]Schema) Schema {
+	return s
+}
+
 // Returns a pre-computed or cached fingerprint
 func (*FloatSchema) Fingerprint() (*Fingerprint, error) {
 	return &Fingerprint{
@@ -488,6 +516,11 @@ func (*FloatSchema) MarshalJSON() ([]byte, error) {
 
 // DoubleSchema implements Schema and represents Avro double type.
 type DoubleSchema struct{}
+
+// Returns representation considering whether the same type was already declared
+func (s *DoubleSchema) withRegistry(registry map[string]Schema) Schema {
+	return s
+}
 
 // Returns a pre-computed or cached fingerprint
 func (*DoubleSchema) Fingerprint() (*Fingerprint, error) {
@@ -567,6 +600,11 @@ func (*DoubleSchema) MarshalJSON() ([]byte, error) {
 // BooleanSchema implements Schema and represents Avro boolean type.
 type BooleanSchema struct{}
 
+// Returns representation considering whether the same type was already declared
+func (s *BooleanSchema) withRegistry(registry map[string]Schema) Schema {
+	return s
+}
+
 // Returns a pre-computed or cached fingerprint
 func (*BooleanSchema) Fingerprint() (*Fingerprint, error) {
 	return &Fingerprint{
@@ -637,6 +675,11 @@ func (*BooleanSchema) MarshalJSON() ([]byte, error) {
 
 // NullSchema implements Schema and represents Avro null type.
 type NullSchema struct{}
+
+// Returns representation considering whether the same type was already declared
+func (s *NullSchema) withRegistry(registry map[string]Schema) Schema {
+	return s
+}
 
 // Returns a pre-computed or cached fingerprint
 func (*NullSchema) Fingerprint() (*Fingerprint, error) {
@@ -726,6 +769,11 @@ type RecordSchema struct {
 	fingerprint *Fingerprint
 }
 
+// Returns representation considering whether the same type was already declared
+func (s *RecordSchema) withRegistry(registry map[string]Schema) Schema {
+	return schemaWithRegistry(s, registry)
+}
+
 // Returns a pre-computed or cached fingerprint
 func (s *RecordSchema) Fingerprint() (*Fingerprint, error) {
 	if s.fingerprint == nil {
@@ -791,6 +839,15 @@ func (s *RecordSchema) Canonical() (*CanonicalSchema, error) {
 
 // MarshalJSON serializes the given schema as JSON.
 func (s *RecordSchema) MarshalJSON() ([]byte, error) {
+	return s.MarshalJSONWithRegistry(make(map[string]Schema))
+}
+
+func (s *RecordSchema) MarshalJSONWithRegistry(registry map[string]Schema) ([]byte, error) {
+	//turn all repeated type declaration into references
+	fields := make([]*SchemaField, len(s.Fields))
+	for i, f := range s.Fields {
+		fields[i] = f.withRegistry(registry)
+	}
 	return json.Marshal(struct {
 		Type      string         `json:"type,omitempty"`
 		Namespace string         `json:"namespace,omitempty"`
@@ -804,7 +861,7 @@ func (s *RecordSchema) MarshalJSON() ([]byte, error) {
 		Name:      s.Name,
 		Doc:       s.Doc,
 		Aliases:   s.Aliases,
-		Fields:    s.Fields,
+		Fields:    fields,
 	})
 }
 
@@ -922,6 +979,11 @@ type RecursiveSchema struct {
 	Actual *RecordSchema
 }
 
+// Returns representation considering whether the same type was already declared
+func (s *RecursiveSchema) withRegistry(registry map[string]Schema) Schema {
+	return s.Actual.withRegistry(registry)
+}
+
 // Returns a pre-computed or cached fingerprint
 func (s *RecursiveSchema) Fingerprint() (*Fingerprint, error) {
 	return s.Actual.Fingerprint()
@@ -983,6 +1045,18 @@ type SchemaField struct {
 	Properties map[string]interface{}
 }
 
+// Returns representation considering whether the same type was already declared
+func (s *SchemaField) withRegistry(registry map[string]Schema) *SchemaField {
+	return &SchemaField{
+		Name: s.Name,
+		Aliases: s.Aliases,
+		Default: s.Default,
+		Doc: s.Doc,
+		Properties: s.Properties,
+		Type: s.Type.withRegistry(registry),
+	}
+}
+
 // Gets a custom non-reserved property from this schemafield and a bool representing if it exists.
 func (s *SchemaField) Prop(key string) (interface{}, bool) {
 	if s.Properties != nil {
@@ -995,7 +1069,7 @@ func (s *SchemaField) Prop(key string) (interface{}, bool) {
 
 // MarshalJSON serializes the given schema field as JSON.
 func (s *SchemaField) MarshalJSON() ([]byte, error) {
-	if s.Type.Type() == Null || (s.Type.Type() == Union && s.Type.(*UnionSchema).Types[0].Type() == Null) {
+	if s.Type.Type() == Null {
 		return json.Marshal(struct {
 			Name    string      `json:"name,omitempty"`
 			Doc     string      `json:"doc,omitempty"`
@@ -1041,6 +1115,11 @@ type EnumSchema struct {
 	Properties  map[string]interface{}
 	symbolsToIndex map[string]int32
 	fingerprint *Fingerprint
+}
+
+// Returns representation considering whether the same type was already declared
+func (s *EnumSchema) withRegistry(registry map[string]Schema) Schema {
+	return schemaWithRegistry(s, registry)
 }
 
 // Returns a pre-computed or cached fingerprint
@@ -1179,6 +1258,15 @@ type ArraySchema struct {
 	Items       Schema
 	Properties  map[string]interface{}
 	fingerprint *Fingerprint
+}
+
+// Returns representation considering whether the same type was already declared
+func (s *ArraySchema) withRegistry(registry map[string]Schema) Schema {
+	return &ArraySchema {
+		Items: schemaWithRegistry(s.Items, registry),
+		Properties: s.Properties,
+		fingerprint: s.fingerprint,
+	}
 }
 
 // Returns a pre-computed or cached fingerprint
@@ -1333,6 +1421,10 @@ func (s *ArraySchema) Canonical() (*CanonicalSchema, error) {
 
 // MarshalJSON serializes the given schema as JSON.
 func (s *ArraySchema) MarshalJSON() ([]byte, error) {
+	return s.MarshalJSONWithRegistry(make(map[string]Schema))
+}
+
+func (s *ArraySchema) MarshalJSONWithRegistry(registry map[string]Schema) ([]byte, error) {
 	return json.Marshal(struct {
 		Type  string `json:"type,omitempty"`
 		Items Schema `json:"items,omitempty"`
@@ -1347,6 +1439,15 @@ type MapSchema struct {
 	Values      Schema
 	Properties  map[string]interface{}
 	fingerprint *Fingerprint
+}
+
+// Returns representation considering whether the same type was already declared
+func (s *MapSchema) withRegistry(registry map[string]Schema) Schema {
+	return &MapSchema {
+		Values: schemaWithRegistry(s.Values, registry),
+		Properties: s.Properties,
+		fingerprint: s.fingerprint,
+	}
 }
 
 // Returns a pre-computed or cached fingerprint
@@ -1442,12 +1543,16 @@ func (s *MapSchema) Canonical() (*CanonicalSchema, error) {
 
 // MarshalJSON serializes the given schema as JSON.
 func (s *MapSchema) MarshalJSON() ([]byte, error) {
+	return s.MarshalJSONWithRegistry(make(map[string]Schema))
+}
+
+func (s *MapSchema) MarshalJSONWithRegistry(registry map[string]Schema) ([]byte, error) {
 	return json.Marshal(struct {
 		Type   string `json:"type,omitempty"`
 		Values Schema `json:"values,omitempty"`
 	}{
 		Type:   "map",
-		Values: s.Values,
+		Values: schemaWithRegistry(s.Values, registry),
 	})
 }
 
@@ -1455,6 +1560,18 @@ func (s *MapSchema) MarshalJSON() ([]byte, error) {
 type UnionSchema struct {
 	Types       []Schema
 	fingerprint *Fingerprint
+}
+
+// Returns representation considering whether the same type was already declared
+func (s *UnionSchema) withRegistry(registry map[string]Schema) Schema {
+	types := make([]Schema, len(s.Types))
+	for i,t := range s.Types {
+		types[i] = t.withRegistry(registry)
+	}
+	return &UnionSchema {
+		Types: types,
+		fingerprint: s.fingerprint,
+	}
 }
 
 // Returns a pre-computed or cached fingerprint
@@ -1545,6 +1662,10 @@ func (s *UnionSchema) Canonical() (*CanonicalSchema, error) {
 
 // MarshalJSON serializes the given schema as JSON.
 func (s *UnionSchema) MarshalJSON() ([]byte, error) {
+	return s.MarshalJSONWithRegistry(make(map[string]Schema))
+}
+
+func (s *UnionSchema) MarshalJSONWithRegistry(registry map[string]Schema) ([]byte, error) {
 	return json.Marshal(s.Types)
 }
 
@@ -1555,6 +1676,11 @@ type FixedSchema struct {
 	Size        int                    `json:"size"`
 	Properties  map[string]interface{} `json:"properties,omitempty"`
 	fingerprint *Fingerprint
+}
+
+// Returns representation considering whether the same type was already declared
+func (s *FixedSchema) withRegistry(registry map[string]Schema) Schema {
+	return s
 }
 
 // Returns a pre-computed or cached fingerprint
@@ -1912,6 +2038,65 @@ func getFullName(name string, namespace string) string {
 	}
 
 	return name
+}
+
+func schemaWithRegistry(schema Schema, regsitry map[string]Schema) Schema {
+	fullname := GetFullName(schema)
+	if _, ok := regsitry[fullname]; !ok {
+		regsitry[fullname] = schema
+		return schema
+	} else {
+		return &refSchema{Type_: fullname, Ref: schema}
+	}
+}
+
+type refSchema struct {
+	Type_ string
+	Ref Schema
+}
+
+// Returns representation considering whether the same type was already declared
+func (s *refSchema) withRegistry(registry map[string]Schema) Schema {
+	return s
+}
+
+// MarshalJSON serializes the given schema as JSON.
+func (s *refSchema) MarshalJSON() ([]byte, error) {
+	return []byte(fmt.Sprintf("%q", s.Type_)), nil
+}
+
+func (s *refSchema) Type() int {
+	return s.Ref.Type()
+}
+
+func (s *refSchema) GetName() string {
+	return s.Ref.GetName()
+}
+
+func (s *refSchema) Generic(datum interface{}) (interface{}, error) {
+	return s.Ref.Generic(datum)
+}
+
+func (s *refSchema) Prop(key string) (interface{}, bool) {
+	return s.Ref.Prop(key)
+}
+
+func (s *refSchema) Validate(v reflect.Value) (bool) {
+	return s.Ref.Validate(v)
+}
+
+// Canonical Schema
+func (s *refSchema) Canonical() (*CanonicalSchema, error) {
+	return s.Canonical()
+}
+
+// Returns a pre-computed or cached fingerprint
+func (s *refSchema) Fingerprint() (*Fingerprint, error) {
+	return s.Fingerprint()
+}
+
+func (s *refSchema) String() string {
+	return fmt.Sprintf("{%q: %q}", "type", s.Type_)
 }
 
 // gets custom string properties from a given schema
