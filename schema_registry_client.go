@@ -131,31 +131,20 @@ func (c *SchemaRegistryClient) getHttpClient() (*http.Client, error) {
 		} else if v.Type == "RSA PRIVATE KEY" {
 			var pkey []byte
 			if x509.IsEncryptedPEMBlock(v) {
-				println("encrypted")
 				pkey, _ = x509.DecryptPEMBlock(v, []byte(c.KeyPass))
 				pkey = pem.EncodeToMemory(&pem.Block{
 					Type:  v.Type,
 					Bytes: pkey,
 				})
 			} else {
-				println("unencrypted")
 				pkey = pem.EncodeToMemory(v)
 			}
-			println("got private key")
 			if cert, err = tls.X509KeyPair(certBlock, pkey); err != nil {
 				return nil, err
 			}
 		} else {
-			return nil, fmt.Errorf("only 'RSA PRIVATE KEY` supported, got: %q", v.Type)
+			return nil, fmt.Errorf("only RSA private keys in PEM form are supported, got: %q", v.Type)
 		}
-		//
-		//if keyBlock, err := x509.DecryptPEMBlock(block, []byte(c.KeyPass)); err != nil {
-		//	return nil, err
-		//} else if cert, err = tls.X509KeyPair(certBlock, keyBlock); err != nil {
-		//	return nil, err
-		//} else {
-		//
-		//}
 
 		transport.TLSClientConfig.Certificates = []tls.Certificate{cert}
 
