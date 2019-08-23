@@ -5,26 +5,26 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/binary"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"github.com/amient/avro"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"reflect"
 	"strconv"
 	"time"
 )
 
-//SchemaRegistryClient is not concurrent
+//SchemaRegistryClient is not concurrent //TODO maybe if both caches were sync.Map{} then it would become safe
 
 type SchemaRegistryClient struct {
-	Url      string
-	CertFile string
-	KeyFile  string
-	KeyPass  string
-	CAFile   string
-	cache1   map[uint32]Schema
-	cache2   map[string]map[Fingerprint]uint32
+	Url    string
+	Tls    *tls.Config
+	cache1 map[uint32]Schema
+	cache2 map[string]map[Fingerprint]uint32
 }
 
 type schemaResponse struct {
@@ -68,6 +68,7 @@ func (c *SchemaRegistryClient) Get(schemaId uint32) (Schema, error) {
 	}
 	return result, nil
 }
+
 func (c *SchemaRegistryClient) GetSchemaId(schema Schema, subject string) (uint32, error) {
 	if c.cache2 == nil {
 		c.cache2 = make(map[string]map[Fingerprint]uint32)
@@ -113,53 +114,186 @@ func (c *SchemaRegistryClient) GetSchemaId(schema Schema, subject string) (uint3
 
 func (c *SchemaRegistryClient) getHttpClient() (*http.Client, error) {
 	transport := new(http.Transport)
-	if c.CertFile != "" {
-		if c.KeyFile == "" {
-			return nil, fmt.Errorf("KeyFile not configured")
+	transport.TLSClientConfig = c.Tls
+	return &http.Client{Transport: transport}, nil
+}
+
+func (c *SchemaRegistryClient) Decode(bytes []byte, result interface{}, readerSchema Schema) (interface{}, error) {
+	if result != nil {
+		if reflect.ValueOf(result).Kind() != reflect.Ptr {
+			panic(fmt.Errorf("a non-reference type passed as into argument"))
+		} else if reflect.TypeOf(result).Elem().Kind() != reflect.Struct {
+			panic(fmt.Errorf("only struct references can be used as a result argument"))
 		}
-
-		transport.TLSClientConfig = new(tls.Config)
-
-		var cert tls.Certificate
-
-		if certBlock, err := ioutil.ReadFile(c.CertFile); err != nil {
-			return nil, err
-		} else if pemData, err := ioutil.ReadFile(c.KeyFile); err != nil {
-			return nil, err
-		} else if v, _ := pem.Decode(pemData); v == nil {
-			return nil, fmt.Errorf("no RAS key found in file: %v", c.KeyFile)
-		} else if v.Type == "RSA PRIVATE KEY" {
-			var pkey []byte
-			if x509.IsEncryptedPEMBlock(v) {
-				pkey, _ = x509.DecryptPEMBlock(v, []byte(c.KeyPass))
-				pkey = pem.EncodeToMemory(&pem.Block{
-					Type:  v.Type,
-					Bytes: pkey,
-				})
-			} else {
-				pkey = pem.EncodeToMemory(v)
-			}
-			if cert, err = tls.X509KeyPair(certBlock, pkey); err != nil {
-				return nil, err
-			}
-		} else {
-			return nil, fmt.Errorf("only RSA private keys in PEM form are supported, got: %q", v.Type)
-		}
-
-		transport.TLSClientConfig.Certificates = []tls.Certificate{cert}
-
-		if c.CAFile != "" {
-			caCert, err := ioutil.ReadFile(c.CAFile)
-			if err != nil {
-				log.Fatal(err)
-			}
-			caCertPool := x509.NewCertPool()
-			caCertPool.AppendCertsFromPEM(caCert)
-			transport.TLSClientConfig.RootCAs = caCertPool
-		}
-
-		transport.TLSClientConfig.BuildNameToCertificate()
 	}
 
-	return &http.Client{Transport: transport}, nil
+	switch bytes[0] {
+	case 0:
+		schemaId := binary.BigEndian.Uint32(bytes[1:])
+		schema, err := c.Get(schemaId)
+		if err != nil {
+			return nil, err
+		}
+		if schema.Type() != Record && result != nil {
+			panic(fmt.Errorf("only record schemas can be mapped to result by reference"))
+		}
+		payload := bytes[5:]
+		var decoder = NewBinaryDecoder(payload)
+		if readerSchema != nil {
+			if result == nil {
+				result = NewGenericRecord(schema)
+			}
+			reader, err := NewDatumProjector(readerSchema, schema)
+			if err != nil {
+				return nil, err
+			}
+			if err := reader.Read(result, decoder); err != nil {
+				return nil, err
+			}
+			return result, nil
+		} else {
+			switch schema.Type() {
+			case Boolean:
+				if b, err := decoder.ReadBoolean(); err != nil {
+					return nil, err
+				} else {
+					return b, nil
+				}
+			case Int:
+				if i, err := decoder.ReadInt(); err != nil {
+					return nil, err
+				} else {
+					return i, nil
+				}
+			case Enum:
+				return nil, fmt.Errorf("enum is not supported as a top-level structure")
+
+			case Array:
+				return nil, fmt.Errorf("array is not supported as a top-level structure")
+
+			case Map:
+				return nil, fmt.Errorf("map is not supported as a top-level structure")
+
+			case Union:
+				return nil, fmt.Errorf("union is not supported as a top-level structure")
+
+			case Fixed:
+				b := make([]byte, schema.(*avro.FixedSchema).Size)
+				if err := decoder.ReadFixed(b); err != nil {
+					return nil, err
+				} else {
+					return b, nil
+				}
+
+			case String:
+				if s, err := decoder.ReadString(); err != nil {
+					return nil, err
+				} else {
+					return s, nil
+				}
+
+			case Bytes:
+				if b, err := decoder.ReadBytes(); err != nil {
+					return nil, err
+				} else {
+					return b, nil
+				}
+
+			case Float:
+				if n, err := decoder.ReadFloat(); err != nil {
+					return nil, err
+				} else {
+					return n, nil
+				}
+			case Double:
+				if n, err := decoder.ReadDouble(); err != nil {
+					return nil, err
+				} else {
+					return n, nil
+				}
+			case Null:
+				if n, err := decoder.ReadNull(); err != nil {
+					return nil, err
+				} else {
+					return n, nil
+				}
+			case Long:
+				if i64, err := decoder.ReadLong(); err != nil {
+					return nil, err
+				} else {
+					return i64, nil
+				}
+			case Recursive:
+				if result == nil {
+					result = NewGenericRecord(schema)
+				}
+				reader := NewDatumReader(schema.(*avro.RecursiveSchema).Actual)
+				if err := reader.Read(result, decoder); err != nil {
+					return nil, err
+				} else {
+					return result, nil
+				}
+			case Record:
+				if result == nil {
+					result = NewGenericRecord(schema)
+				}
+				reader := NewDatumReader(schema)
+				if err := reader.Read(result, decoder); err != nil {
+					return nil, err
+				} else {
+					return result, nil
+				}
+			default:
+				return nil, fmt.Errorf("not implemented avro decode type: %v", schema.Type())
+			}
+
+		}
+	default:
+		panic("avro binary header incorrect")
+	}
+}
+
+func TlsConfigFromPEM(certFile, keyFile, keyPass, caFile string) (*tls.Config, error) {
+	config := new(tls.Config)
+
+	var cert tls.Certificate
+
+	if certBlock, err := ioutil.ReadFile(certFile); err != nil {
+		return nil, err
+	} else if pemData, err := ioutil.ReadFile(keyFile); err != nil {
+		return nil, err
+	} else if v, _ := pem.Decode(pemData); v == nil {
+		return nil, fmt.Errorf("no RAS key found in file: %v", keyFile)
+	} else if v.Type == "RSA PRIVATE KEY" {
+		var pkey []byte
+		if x509.IsEncryptedPEMBlock(v) {
+			pkey, _ = x509.DecryptPEMBlock(v, []byte(keyPass))
+			pkey = pem.EncodeToMemory(&pem.Block{
+				Type:  v.Type,
+				Bytes: pkey,
+			})
+		} else {
+			pkey = pem.EncodeToMemory(v)
+		}
+		if cert, err = tls.X509KeyPair(certBlock, pkey); err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, fmt.Errorf("only RSA private keys in PEM form are supported, got: %q", v.Type)
+	}
+
+	config.Certificates = []tls.Certificate{cert}
+
+	if caFile != "" {
+		caCert, err := ioutil.ReadFile(caFile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM(caCert)
+		config.RootCAs = caCertPool
+	}
+
+	config.BuildNameToCertificate()
+	return config, nil
 }
