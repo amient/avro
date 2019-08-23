@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"github.com/amient/avro"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -178,7 +177,7 @@ func (c *SchemaRegistryClient) Decode(bytes []byte, result interface{}, readerSc
 				return nil, fmt.Errorf("union is not supported as a top-level structure")
 
 			case Fixed:
-				b := make([]byte, schema.(*avro.FixedSchema).Size)
+				b := make([]byte, schema.(*FixedSchema).Size)
 				if err := decoder.ReadFixed(b); err != nil {
 					return nil, err
 				} else {
@@ -227,7 +226,7 @@ func (c *SchemaRegistryClient) Decode(bytes []byte, result interface{}, readerSc
 				if result == nil {
 					result = NewGenericRecord(schema)
 				}
-				reader := NewDatumReader(schema.(*avro.RecursiveSchema).Actual)
+				reader := NewDatumReader(schema.(*RecursiveSchema).Actual)
 				if err := reader.Read(result, decoder); err != nil {
 					return nil, err
 				} else {
