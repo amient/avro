@@ -33,3 +33,4 @@ fuzzes/**/suppressions
 
 # IntelliJ
 *.iml
+.idea/
