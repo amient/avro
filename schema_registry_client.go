@@ -129,7 +129,6 @@ func (c *SchemaRegistryClient) Decode(bytes []byte, result interface{}, readerSc
 	switch bytes[0] {
 	case 0:
 		schemaId := binary.BigEndian.Uint32(bytes[1:])
-		log.Printf("Decoding message with schema id %v", schemaId)
 		schema, err := c.Get(schemaId)
 		if err != nil {
 			return nil, err
