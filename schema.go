@@ -1185,14 +1185,23 @@ func (s *EnumSchema) Generic(datum interface{}) (interface{}, error) {
 	} else if e, ok := datum.(EnumValue); ok {
 		return e, nil
 	} else if symbol, ok := datum.(string); ok && contains(symbol) {
-		e := NewEnumValue(symbol, s)
-		return *e, nil
+		if e, err := NewEnumValue(symbol, s); err != nil {
+			return nil, err
+		} else {
+			return *e, nil
+		}
 	} else if index, ok := datum.(int32); ok && index >= 0 && int(index) < len(s.Symbols) {
-		e := NewEnumValue(s.Symbols[index], s)
-		return *e, nil
+		if e, err := NewEnumValue(s.Symbols[index], s); err != nil {
+			return nil, err
+		} else {
+			return *e, nil
+		}
 	} else if index, ok := datum.(int); ok && index >= 0 && index < len(s.Symbols) {
-		e := NewEnumValue(s.Symbols[int32(index)], s)
-		return *e, nil
+		if e, err := NewEnumValue(s.Symbols[int32(index)], s); err != nil {
+			return nil, err
+		} else {
+			return *e, nil
+		}
 	} else {
 		return nil, fmt.Errorf("don't know how to convert datum to an enum value: %v", datum)
 	}
@@ -1274,9 +1283,12 @@ func (s *EnumSchema) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func (s *EnumSchema) Value(symbol string) EnumValue {
-	enum := NewEnumValue(symbol, s)
-	return *enum
+func (s *EnumSchema) Value(symbol string) (EnumValue, error) {
+	if enum, err := NewEnumValue(symbol, s); err != nil {
+		return EnumValue{}, err
+	} else {
+		return *enum, nil
+	}
 }
 
 // ArraySchema implements Schema and represents Avro array type.

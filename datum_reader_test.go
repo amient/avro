@@ -710,7 +710,7 @@ func specificReaderComplexVal() (Schema, []byte) {
 	if err != nil {
 		panic(err)
 	}
-	e := NewEnumValue("A", &EnumSchema{Symbols: []string{"A", "B", "C", "D"}})
+	e, _ := NewEnumValue("A", &EnumSchema{Symbols: []string{"A", "B", "C", "D"}})
 	e.Set("A")
 	c := newComplex()
 	c.EnumField.Set("A")

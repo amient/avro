@@ -8,6 +8,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -120,9 +121,9 @@ func (c *SchemaRegistryClient) getHttpClient() (*http.Client, error) {
 func (c *SchemaRegistryClient) Decode(bytes []byte, result interface{}, readerSchema Schema) (interface{}, error) {
 	if result != nil {
 		if reflect.ValueOf(result).Kind() != reflect.Ptr {
-			panic(fmt.Errorf("a non-reference type passed as into argument"))
+			return nil, fmt.Errorf("a non-reference type passed as into argument")
 		} else if reflect.TypeOf(result).Elem().Kind() != reflect.Struct {
-			panic(fmt.Errorf("only struct references can be used as a result argument"))
+			return nil, fmt.Errorf("only struct references can be used as a result argument")
 		}
 	}
 
@@ -134,7 +135,7 @@ func (c *SchemaRegistryClient) Decode(bytes []byte, result interface{}, readerSc
 			return nil, err
 		}
 		if schema.Type() != Record && result != nil {
-			panic(fmt.Errorf("only record schemas can be mapped to result by reference"))
+			return nil, fmt.Errorf("only record schemas can be mapped to result by reference")
 		}
 		payload := bytes[5:]
 		var decoder = NewBinaryDecoder(payload)
@@ -248,7 +249,7 @@ func (c *SchemaRegistryClient) Decode(bytes []byte, result interface{}, readerSc
 
 		}
 	default:
-		panic("avro binary header incorrect")
+		return nil, errors.New("avro binary header incorrect")
 	}
 }
 

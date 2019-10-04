@@ -410,10 +410,14 @@ type _complex struct {
 var _complexEnum = &EnumSchema{Name: "complexEnum", Symbols: []string{"A", "B", "C", "D"}}
 
 func newComplex() *_complex {
+	val, err := _complexEnum.Value("A")
+	if err != nil {
+		panic(err)
+	}
 	return &_complex{
 		StringArray: make([]string, 0),
 		LongArray:   make([]int64, 0),
-		EnumField:   _complexEnum.Value("A"),
+		EnumField:   val,
 		MapOfInts:   make(map[string]int32),
 		RecordField: newTestRecord(),
 		MapOfRecord: make(map[string]*_testRecord),

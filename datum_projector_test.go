@@ -211,8 +211,12 @@ func TestEmptyStructRefs(t *testing.T) {
 
 	var MyEnum = EnumSchema{Symbols: []string{"A", "B", "C"}}
 
+	val, err := MyEnum.Value("B")
+	if err != nil {
+		panic(err)
+	}
 	val0 := &Position{
-		Enum: MyEnum.Value("B"),
+		Enum: val,
 	}
 	buffer := new(bytes.Buffer)
 	NewDatumWriter(schema).Write(val0, NewBinaryEncoder(buffer))

@@ -36,14 +36,14 @@ type EnumValue struct {
 }
 
 // NewGenericEnum returns a new EnumValue that uses provided enum symbols.
-func NewEnumValue(symbol string, schema *EnumSchema) *EnumValue {
+func NewEnumValue(symbol string, schema *EnumSchema) (*EnumValue, error) {
 	if index := schema.IndexOf(symbol); index < 0 {
-		panic(fmt.Sprintf("Enum symbol not found: %v symbols: %v", symbol, schema.Symbols))
+		return nil, fmt.Errorf("Enum symbol not found: %v symbols: %v", symbol, schema.Symbols)
 	} else {
 		return &EnumValue{
 			schema: schema,
 			index:  index,
-		}
+		}, nil
 	}
 }
 

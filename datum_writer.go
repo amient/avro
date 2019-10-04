@@ -592,7 +592,8 @@ func (writer *GenericDatumWriter) isWritableAs(v interface{}, s Schema) bool {
 		_, ok2 := v.(EnumValue)
 		ok = ok1 || ok2
 	case *UnionSchema:
-		panic("Nested unions not supported") //this is a part of spec: http://avro.apache.org/docs/current/spec.html#binary_encode_complex
+		//nested unions are not supported - this is a part of spec: http://avro.apache.org/docs/current/spec.html#binary_encode_complex
+		return false
 	case *RecordSchema:
 		_, ok = v.(*GenericRecord)
 	case *preparedRecordSchema:
