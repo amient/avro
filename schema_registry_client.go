@@ -88,11 +88,15 @@ func (c *SchemaRegistryClient) GetSchemaId(schema Schema, subject string) (uint3
 			request["schema"] = schema.String()
 			if schemaJson, err := json.Marshal(request); err != nil {
 				return 0, err
+			} else if httpClient, err := c.getHttpClient(); err != nil {
+				return 0, err
 			} else {
 				log.Printf("Registering schema for subject %q schema: %v", subject, schema.GetName())
 				var url = c.Url + "/subjects/" + subject + "/versions"
 				j := make(map[string]uint32)
-				if resp, err := http.Post(url, "application/json", bytes.NewReader(schemaJson)); err != nil {
+				req, _ := http.NewRequest("POST", url, bytes.NewReader(schemaJson))
+				req.Header.Set("Content-Type", "application/json")
+				if resp, err := httpClient.Do(req); err != nil {
 					return 0, err
 				} else if resp.StatusCode != 200 {
 					return 0, fmt.Errorf(resp.Status)
@@ -258,39 +262,42 @@ func TlsConfigFromPEM(certFile, keyFile, keyPass, caFile string) (*tls.Config, e
 
 	var cert tls.Certificate
 
-	if certBlock, err := ioutil.ReadFile(certFile); err != nil {
-		return nil, err
-	} else if pemData, err := ioutil.ReadFile(keyFile); err != nil {
-		return nil, err
-	} else if v, _ := pem.Decode(pemData); v == nil {
-		return nil, fmt.Errorf("no RAS key found in file: %v", keyFile)
-	} else if v.Type == "RSA PRIVATE KEY" {
-		var pkey []byte
-		if x509.IsEncryptedPEMBlock(v) {
-			pkey, _ = x509.DecryptPEMBlock(v, []byte(keyPass))
-			pkey = pem.EncodeToMemory(&pem.Block{
-				Type:  v.Type,
-				Bytes: pkey,
-			})
-		} else {
-			pkey = pem.EncodeToMemory(v)
-		}
-		if cert, err = tls.X509KeyPair(certBlock, pkey); err != nil {
+	if certFile != "" {
+		if certBlock, err := ioutil.ReadFile(certFile); err != nil {
 			return nil, err
+		} else if pemData, err := ioutil.ReadFile(keyFile); err != nil {
+			return nil, err
+		} else if v, _ := pem.Decode(pemData); v == nil {
+			return nil, fmt.Errorf("no RAS key found in file: %v", keyFile)
+		} else if v.Type == "RSA PRIVATE KEY" {
+			var pkey []byte
+			if x509.IsEncryptedPEMBlock(v) {
+				pkey, _ = x509.DecryptPEMBlock(v, []byte(keyPass))
+				pkey = pem.EncodeToMemory(&pem.Block{
+					Type:  v.Type,
+					Bytes: pkey,
+				})
+			} else {
+				pkey = pem.EncodeToMemory(v)
+			}
+			if cert, err = tls.X509KeyPair(certBlock, pkey); err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, fmt.Errorf("only RSA private keys in PEM form are supported, got: %q", v.Type)
 		}
-	} else {
-		return nil, fmt.Errorf("only RSA private keys in PEM form are supported, got: %q", v.Type)
+		config.Certificates = []tls.Certificate{cert}
 	}
-
-	config.Certificates = []tls.Certificate{cert}
 
 	if caFile != "" {
 		caCert, err := ioutil.ReadFile(caFile)
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 		caCertPool := x509.NewCertPool()
-		caCertPool.AppendCertsFromPEM(caCert)
+		if ok := caCertPool.AppendCertsFromPEM(caCert); !ok {
+			return nil, fmt.Errorf("could not add root ca from %v", caFile)
+		}
 		config.RootCAs = caCertPool
 	}
 
