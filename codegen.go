@@ -11,7 +11,9 @@ import (
 	"errors"
 	"fmt"
 	"go/format"
+	"regexp"
 	"strings"
+	"unicode"
 )
 
 // CodeGenerator is a code generation tool for structs from given Avro schemas.
@@ -280,6 +282,25 @@ func (codegen *CodeGenerator) writeStructDefinition(info *recordSchemaInfo, buff
 	return err
 }
 
+var reFieldSplitChars = regexp.MustCompile(`[_\-]`)
+
+func toGoStructFieldName(anyCase string) string {
+	prev := rune(-1)
+	return strings.Map(
+		func(r rune) rune {
+			if prev < 1 {
+				prev = r
+				return unicode.ToTitle(r)
+			}
+			if r == '_' || r == '-' {
+				r = -1
+			}
+			prev = r
+			return r
+		},
+		anyCase)
+}
+
 func (codegen *CodeGenerator) writeStructField(field *SchemaField, buffer *bytes.Buffer) error {
 	err := codegen.writeDoc("\t", field.Doc, buffer)
 	if err != nil {
@@ -289,12 +310,17 @@ func (codegen *CodeGenerator) writeStructField(field *SchemaField, buffer *bytes
 		return errors.New("Empty field name.")
 	}
 
-	_, err = buffer.WriteString(fmt.Sprintf("\t%s%s ", strings.ToUpper(field.Name[:1]), field.Name[1:]))
+	_, err = buffer.WriteString(toGoStructFieldName(field.Name) + " ")
 	if err != nil {
 		return err
 	}
 
 	err = codegen.writeStructFieldType(field.Type, buffer)
+	if err != nil {
+		return err
+	}
+
+	_, err = buffer.WriteString(fmt.Sprintf("`avro:\"%s\"`", field.Name))
 	if err != nil {
 		return err
 	}
