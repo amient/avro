@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"go/format"
+	"reflect"
 	"regexp"
 	"strings"
 	"unicode"
@@ -238,7 +239,8 @@ func (codegen *CodeGenerator) writeEnumConstants(info *enumSchemaInfo, buffer *b
 
 func (codegen *CodeGenerator) writeImportStatement() error {
 	buffer := codegen.codeSnippets[0]
-	_, err := buffer.WriteString(`import "gopkg.in/avro.v0"`)
+	packageName := reflect.TypeOf(CodeGenerator{}).PkgPath()
+	_, err := buffer.WriteString(fmt.Sprintf(`import "%s"`, packageName))
 	if err != nil {
 		return err
 	}
