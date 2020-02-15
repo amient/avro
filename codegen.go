@@ -388,12 +388,10 @@ func (codegen *CodeGenerator) writeStructFieldType(schema Schema, buffer *bytes.
 	case Record:
 		{
 
-			/*
-				_, err = buffer.WriteString("*")
-				if err != nil {
-					return err
-				}
-			*/
+			_, err = buffer.WriteString("*")
+			if err != nil {
+				return err
+			}
 			recordSchema := schema.(*RecordSchema)
 
 			schemaInfo, err := newRecordSchemaInfo(recordSchema)
@@ -434,9 +432,11 @@ func (codegen *CodeGenerator) writeStructUnionType(schema *UnionSchema, buffer *
 		} else if schema.Types[1].Type() == Null {
 			unionType = schema.Types[0]
 		}
-		_, err := buffer.WriteString("*")
-		if err != nil {
-			return err
+		if !codegen.isNullable(unionType) {
+			_, err := buffer.WriteString("*")
+			if err != nil {
+				return err
+			}
 		}
 		return codegen.writeStructFieldType(unionType, buffer)
 	}

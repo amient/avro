@@ -121,7 +121,7 @@ func TestCodegen(t *testing.T) {
 			}},
 			"Person": {{
 				GoName:  "Address",
-				GoType:  "Address",
+				GoType:  "*Address",
 				AvroTag: "address",
 			}},
 		},
