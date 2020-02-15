@@ -41,7 +41,7 @@ func extractStructTypes(code string) (map[string]*ast.StructType, error) {
 	}
 
 	// Print the AST. Useful when tests fail
-	ast.Print(fset, f)
+	//ast.Print(fset, f)
 
 	structs := map[string]*ast.StructType{}
 	for _, decl := range f.Decls {
@@ -121,7 +121,7 @@ func TestCodegen(t *testing.T) {
 			}},
 			"Person": {{
 				GoName:  "Address",
-				GoType:  "*Address",
+				GoType:  "Address",
 				AvroTag: "address",
 			}},
 		},
@@ -146,19 +146,36 @@ func TestCodegen(t *testing.T) {
 			}},
 		},
 	}, {
-		name: "pointer",
+		name: "optional",
 		schema: `{
 			"type": "record",
 			"name": "Person",
 			"fields": [
-				{"name": "first_name", "type": [ "null", "string" ]}
+				{"name": "first_name", "type": [ "null", "string" ]},
+				{
+					"name": "address",
+					"type": [
+						"null",
+						{
+							"type": "record",
+							"name": "address",
+							"fields": [
+								{ "name": "suburb", "type": "string" }
+							]
+						}
+					]
+				}
 			]
 		}`,
 		expect: map[string][]structField{
 			"Person": {{
 				GoName:  "FirstName",
-				GoType:  "string",
+				GoType:  "*string",
 				AvroTag: "first_name",
+			}, {
+				GoName:  "Address",
+				GoType:  "*Address",
+				AvroTag: "address",
 			}},
 		},
 	}} {
